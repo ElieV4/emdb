@@ -1,9 +1,27 @@
 # README
+---
 application movie / serie tracker avec des pages en arborescence pour les infos de dbistribution / films et séries connexes
 multi utilisateur
-app mobile
+app crossplatform
 
-## front 
+## Stack 
+---
+
+| Couche | Techno | Gratuit ? | Pourquoi |
+|---|---|---|---|
+| **Frontend** | Next.js + React + TypeScript | ✅ Gratuit | Rendu soigné pour dataviz/tableaux/filtres complexes, SSR/SSG natif |
+| **UI/Styling** | Tailwind CSS | ✅ Gratuit | Standard et rapide |
+| **Dataviz** | Recharts ou Chart.js | ✅ Gratuit | Librairies matures, intégration React simple |
+| **Backend API** | NestJS + TypeScript | ✅ Gratuit | Structure en couches (modules/DTO/injection de dépendances), Swagger/OpenAPI natif pour doc API |
+| **Base de données** | PostgreSQL (managé via Supabase) | ✅ Gratuit (free tier) | 500 Mo DB / 1 Go stockage |
+| **Auth** | Supabase Auth (JWT), consommé par NestJS | ✅ Gratuit (free tier) | 50k utilisateurs actifs/mois gratuits |
+| **Cache TMDB** | Redis (Upstash) | ✅ Gratuit (free tier) | 10k commandes/jour gratuites |
+| **Source de données films/séries** | API TMDB | ✅ Gratuit | Clé gratuite pour non commercial, rate limit ok |
+| **CI/CD** | GitHub Actions | ✅ Gratuit | 2000 min/mois gratuites |
+| **Hébergement frontend** | Vercel | ✅ Gratuit (hobby tier) | Fait par l'éditeur de Next.js, déploiement automatique depuis GitHub, gratuit pour usage perso/non-commercial |
+| **Hébergement backend** | Render ou Railway (Docker) | ⚠️ Gratuit avec limite | Free tier disponible mais cold start après inactivité (~30-50s de réveil) — acceptable pour une démo portfolio, pas pour de la prod réelle |
+
+## Fonctionnalités
 ---
 - profil / connexion
 
@@ -71,7 +89,7 @@ app mobile
         par pays de production
         par note imdb / perso
 
-## back 
+## Backend
 ---
 sources de données
     infos films / séries / acteurs 
@@ -79,6 +97,3 @@ sources de données
         scraper imdb ? 
     listes de films / séries ? 
         scrap senscritique / letterboxed
-
-
-modele de données
