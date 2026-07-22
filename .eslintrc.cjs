@@ -18,10 +18,10 @@ module.exports = {
     es2022: true,
   },
   ignorePatterns: [
-    'dist',
-    'node_modules',
-    'coverage',
-    '*.js',
+    '**/dist',
+    '**/node_modules',
+    '**/coverage',
+    '**/*.js',
     'prisma/migrations/**',
   ],
   rules: {
