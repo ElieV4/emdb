@@ -18,6 +18,25 @@ export type TmdbEpisodeCredits = {
   guest_stars: TmdbEpisodeCreditCast[];
 };
 
+export type TmdbCreditCast = {
+  id: number;
+  name: string;
+  character?: string | null;
+  order?: number | null;
+};
+
+export type TmdbCreditCrew = {
+  id: number;
+  name: string;
+  job: string;
+  department?: string | null;
+};
+
+export type TmdbCredits = {
+  cast?: TmdbCreditCast[];
+  crew?: TmdbCreditCrew[];
+};
+
 export type EpisodeCreditInsert = {
   tmdb_person_id: number;
   role: 'acteur' | 'realisateur' | 'scenariste' | 'autre';
