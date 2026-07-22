@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: emdb-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: emdb
+      POSTGRES_PASSWORD: emdb
+      POSTGRES_DB: emdb
+    ports:
+      - '5432:5432'
+    volumes:
+      - emdb_postgres_data:/var/lib/postgresql/data
+      # exécuté une seule fois à la création du volume (base vierge) :
+      # cf. roadmap 1.1 — db_init.sql = source de vérité (tables, triggers, fonctions, vues matérialisées)
+      - ./packages/db/sql/db_init.sql:/docker-entrypoint-initdb.d/01-db_init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U emdb -d emdb']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: emdb-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - emdb_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: emdb-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://emdb:emdb@postgres:5432/emdb
+      REDIS_URL: redis://redis:6379
+    ports:
+      - '3001:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages:/app/packages
+      - /app/node_modules
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: emdb-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://emdb:emdb@postgres:5432/emdb
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/worker:/app/apps/worker
+      - ./packages:/app/packages
+      - /app/node_modules
+
+volumes:
+  emdb_postgres_data:
+  emdb_redis_data:

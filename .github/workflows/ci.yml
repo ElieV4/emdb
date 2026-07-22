@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: emdb
+          POSTGRES_PASSWORD: emdb
+          POSTGRES_DB: emdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U emdb -d emdb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://emdb:emdb@localhost:5432/emdb
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-secret
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --workspaces --if-present || npm install --workspaces --if-present
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Appliquer le schéma SQL (db_init.sql) sur la base de CI
+        run: psql "$DATABASE_URL" -f packages/db/sql/db_init.sql
+
+      - name: Prisma — introspection + validation (dry-run migration)
+        run: |
+          npm run db:pull --workspace=packages/db
+          npm run generate --workspace=packages/db
+          npm run migrate:dry-run --workspace=packages/db
+
+      - name: Tests
+        run: npm run test --workspaces --if-present

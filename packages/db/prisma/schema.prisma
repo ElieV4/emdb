@@ -1,0 +1,326 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model countries {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code            String            @unique @db.Char(2)
+  nom             String
+  people          people[]
+  title_countries title_countries[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model credits {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title_id   String    @db.Uuid
+  person_id  String    @db.Uuid
+  episode_id String?   @db.Uuid
+  role_id    String    @db.Uuid
+  personnage String?
+  ordre      Int?
+  source     String    @default("tmdb")
+  episodes   episodes? @relation(fields: [episode_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  people     people    @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  roles      roles     @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  titles     titles    @relation(fields: [title_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([title_id, person_id, role_id, episode_id])
+  @@index([person_id], map: "idx_credits_person")
+  @@index([title_id], map: "idx_credits_title")
+  @@index([episode_id], map: "idx_credits_episode")
+  @@index([role_id], map: "idx_credits_role")
+}
+
+model episodes {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  season_id     String          @db.Uuid
+  numero        Int
+  titre         String?
+  synopsis      String?
+  date_sortie   DateTime?       @db.Date
+  duree_minutes Int?
+  image_url     String?
+  credits       credits[]
+  seasons       seasons         @relation(fields: [season_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  notifications notifications[]
+  user_ratings  user_ratings[]
+  user_watches  user_watches[]
+
+  @@unique([season_id, numero])
+  @@index([date_sortie], map: "idx_episodes_date_sortie")
+}
+
+model genres {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nom          String         @unique
+  tmdb_id      Int?           @unique
+  title_genres title_genres[]
+}
+
+model list_items {
+  list_id    String     @db.Uuid
+  title_id   String     @db.Uuid
+  position   Int?
+  added_at   DateTime   @default(now()) @db.Timestamptz(6)
+  user_lists user_lists @relation(fields: [list_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  titles     titles     @relation(fields: [title_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([list_id, title_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model list_shares {
+  list_id             String     @db.Uuid
+  shared_with_user_id String     @db.Uuid
+  permission          String     @default("lecture")
+  shared_at           DateTime   @default(now()) @db.Timestamptz(6)
+  user_lists          user_lists @relation(fields: [list_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users               users      @relation(fields: [shared_with_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([list_id, shared_with_user_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model notifications {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  episode_id String?   @db.Uuid
+  type       String
+  lu         Boolean   @default(false)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  episodes   episodes? @relation(fields: [episode_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model people {
+  id                                                                   String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tmdb_id                                                              Int?                     @unique
+  nom                                                                  String
+  genre                                                                String?
+  date_naissance                                                       DateTime?                @db.Date
+  pays_id                                                              String?                  @db.Uuid
+  photo_url                                                            String?
+  bio                                                                  String?
+  wiki_url                                                             String?
+  source                                                               String                   @default("tmdb")
+  created_at                                                           DateTime                 @default(now()) @db.Timestamptz(6)
+  credits                                                              credits[]
+  countries                                                            countries?               @relation(fields: [pays_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  person_recommendations_person_recommendations_person_idTopeople      person_recommendations[] @relation("person_recommendations_person_idTopeople")
+  person_recommendations_person_recommendations_recommended_idTopeople person_recommendations[] @relation("person_recommendations_recommended_idTopeople")
+
+  @@index([nom], map: "idx_people_nom")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model person_recommendations {
+  person_id                                            String   @db.Uuid
+  recommended_id                                       String   @db.Uuid
+  score                                                Decimal  @db.Decimal(5, 4)
+  generated_at                                         DateTime @default(now()) @db.Timestamptz(6)
+  people_person_recommendations_person_idTopeople      people   @relation("person_recommendations_person_idTopeople", fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  people_person_recommendations_recommended_idTopeople people   @relation("person_recommendations_recommended_idTopeople", fields: [recommended_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([person_id, recommended_id])
+}
+
+model seasons {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title_id    String     @db.Uuid
+  numero      Int
+  titre       String?
+  date_sortie DateTime?  @db.Date
+  synopsis    String?
+  episodes    episodes[]
+  titles      titles     @relation(fields: [title_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([title_id, numero])
+  @@index([title_id], map: "idx_seasons_title")
+}
+
+model title_countries {
+  title_id   String    @db.Uuid
+  country_id String    @db.Uuid
+  countries  countries @relation(fields: [country_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  titles     titles    @relation(fields: [title_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([title_id, country_id])
+}
+
+model title_genres {
+  title_id String @db.Uuid
+  genre_id String @db.Uuid
+  genres   genres @relation(fields: [genre_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  titles   titles @relation(fields: [title_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([title_id, genre_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model title_recommendations {
+  title_id                                            String   @db.Uuid
+  recommended_id                                      String   @db.Uuid
+  score                                               Decimal  @db.Decimal(5, 4)
+  generated_at                                        DateTime @default(now()) @db.Timestamptz(6)
+  titles_title_recommendations_recommended_idTotitles titles   @relation("title_recommendations_recommended_idTotitles", fields: [recommended_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  titles_title_recommendations_title_idTotitles       titles   @relation("title_recommendations_title_idTotitles", fields: [title_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([title_id, recommended_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model titles {
+  id                                                                 String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tmdb_id                                                            Int?                    @unique
+  type                                                               String
+  titre_vo                                                           String
+  titre_vf                                                           String?
+  synopsis                                                           String?
+  affiche_url                                                        String?
+  date_sortie                                                        DateTime?               @db.Date
+  duree_minutes                                                      Int?
+  statut_serie                                                       String?
+  statut_production                                                  String?
+  note_imdb                                                          Decimal?                @db.Decimal(3, 1)
+  is_animation                                                       Boolean                 @default(false)
+  next_episode_air_date                                              DateTime?               @db.Date
+  source                                                             String                  @default("tmdb")
+  created_at                                                         DateTime                @default(now()) @db.Timestamptz(6)
+  credits                                                            credits[]
+  list_items                                                         list_items[]
+  seasons                                                            seasons[]
+  title_countries                                                    title_countries[]
+  title_genres                                                       title_genres[]
+  title_recommendations_title_recommendations_recommended_idTotitles title_recommendations[] @relation("title_recommendations_recommended_idTotitles")
+  title_recommendations_title_recommendations_title_idTotitles       title_recommendations[] @relation("title_recommendations_title_idTotitles")
+  title_studios                                                      title_studios[]
+  user_follows_serie                                                 user_follows_serie[]
+  user_ratings                                                       user_ratings[]
+  user_watches                                                       user_watches[]
+
+  @@index([date_sortie], map: "idx_titles_date_sortie")
+  @@index([note_imdb], map: "idx_titles_note_imdb")
+  @@index([titre_vo], map: "idx_titles_titre_vo")
+  @@index([type], map: "idx_titles_type")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model tmdb_sync_log {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tmdb_id    Int
+  type       String
+  action     String
+  status     String
+  error      String?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([tmdb_id, type], map: "idx_sync_log_tmdb")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model user_follows_serie {
+  user_id     String   @db.Uuid
+  title_id    String   @db.Uuid
+  followed_at DateTime @default(now()) @db.Timestamptz(6)
+  titles      titles   @relation(fields: [title_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users       users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, title_id])
+  @@index([title_id], map: "idx_follows_title")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model user_lists {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String        @db.Uuid
+  nom         String
+  type        String
+  description String?
+  created_at  DateTime      @default(now()) @db.Timestamptz(6)
+  list_items  list_items[]
+  list_shares list_shares[]
+  users       users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model user_ratings {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  title_id    String?   @db.Uuid
+  episode_id  String?   @db.Uuid
+  note_perso  Decimal?  @db.Decimal(3, 1)
+  commentaire String?
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @default(now()) @db.Timestamptz(6)
+  episodes    episodes? @relation(fields: [episode_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  titles      titles?   @relation(fields: [title_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, episode_id])
+  @@unique([user_id, title_id])
+  @@index([user_id], map: "idx_ratings_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model user_watches {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  title_id   String?   @db.Uuid
+  episode_id String?   @db.Uuid
+  date_vue   DateTime  @db.Date
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  episodes   episodes? @relation(fields: [episode_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  titles     titles?   @relation(fields: [title_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([episode_id], map: "idx_watches_episode")
+  @@index([title_id], map: "idx_watches_title")
+  @@index([user_id], map: "idx_watches_user")
+  @@index([user_id, date_vue], map: "idx_watches_user_date")
+}
+
+model users {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email              String               @unique
+  password_hash      String
+  pseudo             String               @unique
+  avatar_url         String?
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  list_shares        list_shares[]
+  notifications      notifications[]
+  user_follows_serie user_follows_serie[]
+  user_lists         user_lists[]
+  user_ratings       user_ratings[]
+  user_watches       user_watches[]
+}
+
+model roles {
+  id      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code    String    @unique
+  libelle String
+  credits credits[]
+}
+
+model studios {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tmdb_id       Int?            @unique
+  nom           String
+  logo_url      String?
+  title_studios title_studios[]
+}
+
+model title_studios {
+  title_id  String  @db.Uuid
+  studio_id String  @db.Uuid
+  studios   studios @relation(fields: [studio_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  titles    titles  @relation(fields: [title_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([title_id, studio_id])
+}

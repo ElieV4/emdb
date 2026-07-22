@@ -1,0 +1,45 @@
+{
+  "name": "emdb",
+  "private": true,
+  "version": "0.0.0",
+  "description": "eMDB - movie/serie tracker (monorepo)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run start:dev --workspace=apps/api",
+    "dev:worker": "npm run start:dev --workspace=apps/worker",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"apps/**/*.ts\" \"packages/**/*.ts\"",
+    "format:check": "prettier --check \"apps/**/*.ts\" \"packages/**/*.ts\"",
+    "test": "npm run test --workspaces --if-present",
+    "prisma:generate": "npm run generate --workspace=packages/db",
+    "prisma:pull": "npm run db:pull --workspace=packages/db",
+    "prisma:migrate:dry-run": "npm run migrate:dry-run --workspace=packages/db",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "allowScripts": {
+    "@nestjs/core@10.4.22": true,
+    "@prisma/client@5.22.0": true,
+    "@prisma/engines@5.22.0": true,
+    "msgpackr-extract@3.0.4": true,
+    "prisma@5.22.0": true
+  }
+}
