@@ -9,6 +9,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "ioredis": "^5.4.1",
     "node-fetch": "^3.3.2"
   },
   "devDependencies": {

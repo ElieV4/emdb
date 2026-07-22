@@ -93,11 +93,27 @@ describe('tmdbClient', () => {
     )).toBe(true);
   });
 
-  it('doit appeler getChanges avec un intervalle de dates', async () => {
+  it('doit appeler getChanges avec un intervalle de dates et les deux endpoints movie/tv', async () => {
     await getChanges('2024-01-01', '2024-01-31');
+
     expect(fetchMock.mock.calls.some(
       ([url]) => (url as string).includes('/movie/changes?api_key=fake-api-key&start_date=2024-01-01&end_date=2024-01-31'),
     )).toBe(true);
+    expect(fetchMock.mock.calls.some(
+      ([url]) => (url as string).includes('/tv/changes?api_key=fake-api-key&start_date=2024-01-01&end_date=2024-01-31'),
+    )).toBe(true);
+  });
+
+  it('doit utiliser Authorization Bearer quand TMDB_AUTH_METHOD=bearer', async () => {
+    process.env.TMDB_AUTH_METHOD = 'bearer';
+
+    await getConfiguration();
+
+    expect(fetchMock.mock.calls.some(
+      ([, options]) => (options as any)?.headers?.Authorization === 'Bearer fake-api-key',
+    )).toBe(true);
+
+    process.env.TMDB_AUTH_METHOD = 'query';
   });
 
   it('doit appeler getTrending avec mediaType et timeWindow', async () => {
