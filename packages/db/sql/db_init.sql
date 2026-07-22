@@ -447,5 +447,45 @@ GROUP BY uw.user_id, tg.genre_id;
 
 CREATE UNIQUE INDEX idx_mv_watch_count_genre ON mv_watch_count_by_genre(user_id, genre_id);
 
+-- [v3] Vues matérialisées supplémentaires pour le comptage (symétriques aux vues watch_time)
+CREATE MATERIALIZED VIEW mv_watch_count_by_period AS
+SELECT
+    uw.user_id,
+    date_trunc('week',  uw.date_vue)::DATE AS periode_semaine,
+    date_trunc('month', uw.date_vue)::DATE AS periode_mois,
+    date_trunc('year',  uw.date_vue)::DATE AS periode_annee,
+    COUNT(*) AS nb_items
+FROM user_watches uw
+GROUP BY uw.user_id, periode_semaine, periode_mois, periode_annee;
+
+CREATE UNIQUE INDEX idx_mv_watch_count_period ON mv_watch_count_by_period(user_id, periode_semaine);
+
+CREATE MATERIALIZED VIEW mv_watch_count_by_country AS
+SELECT
+    uw.user_id,
+    tc.country_id,
+    COUNT(*) AS nb_items
+FROM user_watches uw
+LEFT JOIN episodes e ON e.id = uw.episode_id
+LEFT JOIN seasons  s ON s.id = e.season_id
+LEFT JOIN titles   t ON t.id = COALESCE(uw.title_id, s.title_id)
+JOIN title_countries tc ON tc.title_id = t.id
+GROUP BY uw.user_id, tc.country_id;
+
+CREATE UNIQUE INDEX idx_mv_watch_count_country ON mv_watch_count_by_country(user_id, country_id);
+
+CREATE MATERIALIZED VIEW mv_watch_count_by_animation AS
+SELECT
+    uw.user_id,
+    t.is_animation,
+    COUNT(*) AS nb_items
+FROM user_watches uw
+LEFT JOIN episodes e ON e.id = uw.episode_id
+LEFT JOIN seasons  s ON s.id = e.season_id
+LEFT JOIN titles   t ON t.id = COALESCE(uw.title_id, s.title_id)
+GROUP BY uw.user_id, t.is_animation;
+
+CREATE UNIQUE INDEX idx_mv_watch_count_anim ON mv_watch_count_by_animation(user_id, is_animation);
+
 -- NB : REFRESH MATERIALIZED VIEW CONCURRENTLY exige un index UNIQUE sur chaque MV (fait ci-dessus)
 -- Rafraichissement a orchestrer via le worker (cron nocturne), cf. roadmap phase 1.4

@@ -10,6 +10,7 @@
     "migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
     "migrate:dry-run": "dotenv -e ../../.env -- prisma validate",
     "apply:raw-sql": "dotenv -e ../../.env -- ts-node --transpile-only scripts/apply-raw-sql.ts",
+    "refresh:materialized-views": "dotenv -e ../../.env -- ts-node --transpile-only scripts/refresh-materialized-views.ts",
     "seed:genres": "dotenv -e ../../.env -- ts-node --transpile-only seed/seed_genres.ts",
     "seed:countries": "dotenv -e ../../.env -- ts-node --transpile-only seed/seed_countries.ts",
     "seed": "npm run seed:genres && npm run seed:countries"

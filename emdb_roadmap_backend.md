@@ -48,10 +48,11 @@ Prisma ne sait ni créer ni versionner triggers/fonctions/vues matérialisées a
 - [ ] `fn_episodes_non_vus(user_id, title_id) RETURNS INT` — appelée via `prisma.$queryRaw` pour le calendrier
 - [ ] `fn_progress_serie(user_id, title_id) RETURNS TABLE(saison, vus, total)` — appelée via `$queryRaw` pour la page série (vue datée par saison)
 
-### 1.4 Vues matérialisées (dataviz — déjà créées dans le schéma v2)
-- `mv_watch_time_by_period`, `mv_watch_time_by_genre`, `mv_watch_time_by_country`, `mv_watch_time_by_animation`, `mv_watch_count_by_genre`
-- [ ] Job worker `refreshMaterializedViews()` : `REFRESH MATERIALIZED VIEW CONCURRENTLY mv_xxx` pour chacune (index UNIQUE déjà en place dans le schéma pour permettre le mode CONCURRENTLY), cron nocturne
-- [ ] Si besoin plus tard : ajouter `mv_watch_count_by_period` (symétrique à `mv_watch_count_by_genre` mais par date) — non présent dans v2, à ajouter si le besoin dataviz se confirme
+### 1.4 Vues matérialisées (dataviz — déjà créées dans le schéma v2/v3)
+- **Vues "watch_time" (durée)** : `mv_watch_time_by_period`, `mv_watch_time_by_genre`, `mv_watch_time_by_country`, `mv_watch_time_by_animation`
+- **Vues "watch_count" (compte)** : `mv_watch_count_by_genre`, `mv_watch_count_by_period`, `mv_watch_count_by_country`, `mv_watch_count_by_animation`
+- [x] Job worker `refreshMaterializedViews()` : `REFRESH MATERIALIZED VIEW CONCURRENTLY mv_xxx` pour chacune (index UNIQUE déjà en place dans le schéma pour permettre le mode CONCURRENTLY), cron nocturne
+- [x] Script `packages/db/scripts/refresh-materialized-views.ts` implémenté et testé
 
 ### 1.5 Contraintes de cohérence à vérifier en tests d'intégration
 - [ ] `user_ratings` : double `UNIQUE (user_id, title_id)` / `UNIQUE (user_id, episode_id)` — fonctionne car Postgres ignore les `NULL` dans les contraintes unique, mais à couvrir par un test dédié (comportement parfois surprenant)
@@ -181,5 +182,88 @@ Prisma ne sait ni créer ni versionner triggers/fonctions/vues matérialisées a
 7. Phase 5 (recommandations, batch mensuel)
 8. Phase 6 (dataviz, lecture des `mv_*` déjà en place depuis la phase 1)
 
-Fichiers de référence : `db_init_v2.sql` (schéma complet), cette roadmap.
+Fichiers de référence : `db_init_v3.sql` (schéma complet avec 8 vues matérialisées), cette roadmap.
 Dis-moi si tu veux que je détaille Phase 3 au même niveau de granularité (fonction par fonction, endpoint par endpoint).
+
+---
+
+## 💡 Avis sur la Roadmap (par Mistral Vibe)
+
+### ✅ Points forts
+1. **Structure claire** : Phases bien séparées avec des objectifs précis
+2. **Détail technique** : Chaque tâche est suffisamment détaillée pour être implémentée
+3. **Ordre logique** : Le flux de développement est cohérent (DB → API → Features)
+4. **Approche pragmatique** : Bon équilibre entre Prisma (CRUD) et SQL brut (requêtes complexes)
+5. **Documentation intégrée** : Les decisions architecturales sont justifiées
+
+### 🔄 Suggestions d'amélioration
+
+#### 1. **Priorisation des phases**
+- **Phase 1** : ✅ Complète (schéma + migrations + seeds + fonctions PL/pgSQL)
+- **Phase 2** : Dépend de la Phase 1, mais pourrait commencer en parallèle pour le client TMDB
+- **Phase 3** : Devrait attendre la fin de la Phase 1 et le début de la Phase 2
+- **Suggestion** : Ajouter des dépendances explicites entre phases
+
+#### 2. **Tests manquants**
+- **Phase 1.5** : Tests de cohérence mentionnés, mais pas de détails sur l'implémentation
+- **Recommandation** : Ajouter une section "Tests" avec :
+  - Tests unitaires pour les fonctions PL/pgSQL (via `$queryRaw`)
+  - Tests d'intégration pour les contraintes de base de données
+  - Tests E2E pour les workflows critiques
+
+#### 3. **Documentation**
+- **Manque** : Pas de section dédiée à la documentation utilisateur/API
+- **Recommandation** : Ajouter une Phase 9 "Documentation" avec :
+  - Swagger/OpenAPI pour l'API
+  - Documentation des endpoints
+  - Guide de déploiement
+
+#### 4. **Sécurité**
+- **Manque** : Pas de mention de :
+  - Validation des inputs utilisateur
+  - Protection contre les injections SQL (Prisma aide, mais à vérifier)
+  - Gestion des erreurs API (middlewares)
+  - Authentification/autorisation (JWT déjà prévu)
+
+#### 5. **Optimisations possibles**
+- **Cache** : Ajouter Redis cache pour les requêtes fréquentes (déjà mentionné pour TMDB)
+- **Pagination** : Prévoir la pagination pour tous les endpoints de liste
+- **Rate limiting** : Protéger l'API contre les abus
+
+#### 6. **Évolutivité**
+- **Bon** : Architecture monorepo avec workspaces
+- **À surveiller** : Performance des vues matérialisées avec beaucoup de données
+- **Recommandation** : Prévoir des partitions pour les grandes tables si nécessaire
+
+#### 7. **CI/CD**
+- **Actuel** : Workflow de base avec lint + test
+- **Améliorations possibles** :
+  - Tests automatiques en CI
+  - Déploiement automatique (staging/prod)
+  - Vérification des migrations avant merge
+
+#### 8. **Monitoring**
+- **Manque** : Pas de mention de monitoring en production
+- **Recommandation** : Ajouter :
+  - Logging structuré
+  - Métriques (Prometheus/Grafana)
+  - Alertes sur les erreurs critiques
+
+---
+
+## 📊 Résumé des modifications apportées
+
+### Vues Matérialisées (Phase 1.4)
+- **Ajoutées** : `mv_watch_count_by_period`, `mv_watch_count_by_country`, `mv_watch_count_by_animation`
+- **Total** : 8 vues matérialisées (5 "watch_time" + 3 "watch_count")
+- **Script** : `refresh-materialized-views.ts` mis à jour
+- **Schéma** : `db_init.sql` passe en v3
+
+### Améliorations CI
+- **Corrigé** : Installation de postgresql-client dans le workflow
+- **Corrigé** : Utilisation de `env:` pour PGPASSWORD
+- **Corrigé** : Changement de répertoire pour les commandes Prisma
+
+---
+
+*Dernière mise à jour : 22 juillet 2026*
