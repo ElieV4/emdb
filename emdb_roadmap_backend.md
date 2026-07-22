@@ -87,6 +87,42 @@ Prisma ne sait ni créer ni versionner triggers/fonctions/vues matérialisées a
   - `getMovieExternalIds(tmdbId): Promise<{imdb_id: string}>` — utile si tu veux croiser avec une note IMDb "brute" séparée de TMDB
   - `getChanges(startDate, endDate): Promise<TmdbChangeItem[]>` — endpoint `/movie/changes` et `/tv/changes`, utile pour ne resynchroniser que ce qui a changé plutôt que tout
 
+Fonction à ajouter	Pourquoi
+searchPerson(query)	Le README prévoit une "page réal ou acteur" mais la 2.1 ne permet de trouver une personne que via un credit — impossible de chercher directement un acteur
+searchMulti(query)	Recherche unifiée films/séries/personnes en une requête (plus adapté à une barre de recherche unique que searchMovie/searchTv séparés)
+getTvExternalIds(tmdbId)	Tu as getMovieExternalIds mais pas l'équivalent séries — donc pas d'imdb_id pour les séries
+getPersonExternalIds(personTmdbId)	Manque complètement. prisma/README.md dit explicitement que people.wiki_url est "résolu via TMDB external_ids (wikidata_id) + API Wikidata", mais aucune fonction ne récupère ce wikidata_id
+getTvEpisodeDetails(tmdbId, season, episode) avec append_to_response=credits	Ton schéma a credits.episode_id (pensé pour les guest stars par épisode), mais rien dans la 2.1 ne va chercher les crédits au niveau épisode — getTvSeason seul ne donne que les épisodes globaux
+getMovieImages(tmdbId) / getTvImages(tmdbId) / getPersonImages(personTmdbId)	Pour des galeries d'affiches/photos si tu veux dépasser le simple affiche_url/photo_url unique
+getMovieVideos(tmdbId) / getTvVideos(tmdbId)	Bandes-annonces — pas dans le schéma actuel mais quasi incontournable pour une page film/série
+getMovieRecommendations(tmdbId) / getMovieSimilar(tmdbId) + équivalents TV	La Phase 5 prévoit un calcul maison des "films/séries connexes", mais TMDB fournit déjà cette donnée — utile en bootstrap ou en complément le temps d'avoir assez de données pour ton propre algo
+getCollectionDetails(collectionId)	TMDB regroupe certains films en "collections" (sagas) — pertinent pour enrichir les "films connexes" sur des franchises, mais pas de table collections dans ton schéma actuel donc à évaluer
+getTrending(mediaType, timeWindow)	Utile pour une page d'accueil/découverte, absent de la roadmap actuelle
+getDiscoverMovie(filters) / getDiscoverTv(filters)	Recherche avancée par genre/année/note — utile si tu veux une page "parcourir" au-delà de la recherche par titre
+
+2. Module tmdb-mapper — mappers manquants (en miroir des endpoints ci-dessus)
+mapTmdbEpisodeCredits(tmdbEpisodeCredits, episodeId) → seul mapper capable de remplir credits.episode_id, actuellement mapTmdbCredits ne mappe qu'au niveau titre
+mapTmdbPersonExternalIds(tmdbExternalIds) → extraction du wikidata_id
+3. Nouveau module wikidata-client (hors TMDB)
+getWikipediaUrlFromWikidataId(wikidataId, lang='fr') — trou net : la doc dit que wiki_url vient de Wikidata, mais aucune fonction n'appelle l'API Wikidata nulle part dans la roadmap. Sans ça, people.wiki_url restera toujours NULL.
+4. Module tmdb-sync — orchestration manquante
+importPersonByTmdbId(tmdbId) — importer une personne en direct (recherche → fiche), pas seulement via un credit de film/série
+importEpisodeGuestCredits(episodeId, tmdbId, season, episode) — peuple enfin credits.episode_id
+refreshPersonData(personId) — rafraîchissement périodique bio/photo, symétrique à refreshTitleData
+bootstrapRecommendationsFromTmdb(titleId) — pré-remplit title_recommendations via TMDB en attendant le batch maison de la Phase 5
+5. Côté packages/db — wrappers manquants pour les vues matérialisées
+
+C'est le trou le plus important pour la Phase 6 (dataviz) : Prisma ignore les vues matérialisées à l'introspection (comme il ignore triggers/fonctions). Donc prisma.mv_watch_time_by_genre.findMany() ne fonctionnera jamais. Il faut des wrappers $queryRaw dans packages/db/src, exactement sur le modèle de functions.ts (countEpisodesNonVus, getSerieProgress) :
+
+getWatchTimeByPeriod(userId)
+getWatchTimeByGenre(userId)
+getWatchTimeByCountry(userId)
+getWatchTimeByAnimation(userId)
+getWatchCountByGenre(userId)
+getWatchCountByPeriod(userId)
+getWatchCountByCountry(userId)
+getWatchCountByAnimation(userId)
+
 ### 2.2 Mapping TMDB → modèle interne (module `tmdb-mapper`)
 - [ ] `mapTmdbMovieToTitle(tmdbMovie): TitleInsert` — mappe `title/original_title` → `titre_vf/titre_vo`, `release_date` → `date_sortie`, `runtime` → `duree_minutes`, `vote_average` → `note_imdb` (ou champ dédié si tu distingues note TMDB / IMDb réelle), `poster_path` + config → `affiche_url`
 - [ ] `mapTmdbTvToTitle(tmdbTv): TitleInsert` — idem + `status` → `statut_serie` (mapping `Returning Series`→`en_cours`, `Ended`/`Canceled`→`terminee`/`annulee`), `next_episode_to_air` → `next_episode_air_date`
@@ -190,13 +226,6 @@ Dis-moi si tu veux que je détaille Phase 3 au même niveau de granularité (fon
 ---
 
 ## 💡 Avis sur la Roadmap (par Mistral Vibe)
-
-### ✅ Points forts
-1. **Structure claire** : Phases bien séparées avec des objectifs précis
-2. **Détail technique** : Chaque tâche est suffisamment détaillée pour être implémentée
-3. **Ordre logique** : Le flux de développement est cohérent (DB → API → Features)
-4. **Approche pragmatique** : Bon équilibre entre Prisma (CRUD) et SQL brut (requêtes complexes)
-5. **Documentation intégrée** : Les decisions architecturales sont justifiées
 
 ### 🔄 Suggestions d'amélioration
 

@@ -98,6 +98,130 @@ export async function getSerieProgress(
   return results || [];
 }
 
+export interface WatchTimeByPeriodResult {
+  user_id: string;
+  periode_semaine: Date;
+  periode_mois: Date;
+  periode_annee: Date;
+  minutes: number;
+}
+
+export interface WatchTimeByGenreResult {
+  user_id: string;
+  genre_id: string;
+  minutes: number;
+}
+
+export interface WatchTimeByCountryResult {
+  user_id: string;
+  country_id: string;
+  minutes: number;
+}
+
+export interface WatchTimeByAnimationResult {
+  user_id: string;
+  is_animation: boolean;
+  minutes: number;
+}
+
+export interface WatchCountByGenreResult {
+  user_id: string;
+  genre_id: string;
+  nb_items: number;
+}
+
+export interface WatchCountByPeriodResult {
+  user_id: string;
+  periode_semaine: Date;
+  periode_mois: Date;
+  periode_annee: Date;
+  nb_items: number;
+}
+
+export interface WatchCountByCountryResult {
+  user_id: string;
+  country_id: string;
+  nb_items: number;
+}
+
+export interface WatchCountByAnimationResult {
+  user_id: string;
+  is_animation: boolean;
+  nb_items: number;
+}
+
+export async function getWatchTimeByPeriod(
+  userId: string,
+): Promise<WatchTimeByPeriodResult[]> {
+  const results = await prisma.$queryRawUnsafe<WatchTimeByPeriodResult[]>(
+    `SELECT * FROM mv_watch_time_by_period WHERE user_id='${userId}'::UUID ORDER BY periode_semaine`,
+  );
+  return results || [];
+}
+
+export async function getWatchTimeByGenre(
+  userId: string,
+): Promise<WatchTimeByGenreResult[]> {
+  const results = await prisma.$queryRawUnsafe<WatchTimeByGenreResult[]>(
+    `SELECT * FROM mv_watch_time_by_genre WHERE user_id='${userId}'::UUID ORDER BY genre_id`,
+  );
+  return results || [];
+}
+
+export async function getWatchTimeByCountry(
+  userId: string,
+): Promise<WatchTimeByCountryResult[]> {
+  const results = await prisma.$queryRawUnsafe<WatchTimeByCountryResult[]>(
+    `SELECT * FROM mv_watch_time_by_country WHERE user_id='${userId}'::UUID ORDER BY country_id`,
+  );
+  return results || [];
+}
+
+export async function getWatchTimeByAnimation(
+  userId: string,
+): Promise<WatchTimeByAnimationResult[]> {
+  const results = await prisma.$queryRawUnsafe<WatchTimeByAnimationResult[]>(
+    `SELECT * FROM mv_watch_time_by_animation WHERE user_id='${userId}'::UUID ORDER BY is_animation`,
+  );
+  return results || [];
+}
+
+export async function getWatchCountByGenre(
+  userId: string,
+): Promise<WatchCountByGenreResult[]> {
+  const results = await prisma.$queryRawUnsafe<WatchCountByGenreResult[]>(
+    `SELECT * FROM mv_watch_count_by_genre WHERE user_id='${userId}'::UUID ORDER BY genre_id`,
+  );
+  return results || [];
+}
+
+export async function getWatchCountByPeriod(
+  userId: string,
+): Promise<WatchCountByPeriodResult[]> {
+  const results = await prisma.$queryRawUnsafe<WatchCountByPeriodResult[]>(
+    `SELECT * FROM mv_watch_count_by_period WHERE user_id='${userId}'::UUID ORDER BY periode_semaine`,
+  );
+  return results || [];
+}
+
+export async function getWatchCountByCountry(
+  userId: string,
+): Promise<WatchCountByCountryResult[]> {
+  const results = await prisma.$queryRawUnsafe<WatchCountByCountryResult[]>(
+    `SELECT * FROM mv_watch_count_by_country WHERE user_id='${userId}'::UUID ORDER BY country_id`,
+  );
+  return results || [];
+}
+
+export async function getWatchCountByAnimation(
+  userId: string,
+): Promise<WatchCountByAnimationResult[]> {
+  const results = await prisma.$queryRawUnsafe<WatchCountByAnimationResult[]>(
+    `SELECT * FROM mv_watch_count_by_animation WHERE user_id='${userId}'::UUID ORDER BY is_animation`,
+  );
+  return results || [];
+}
+
 // ============================================================================
 // UTILITAIRES
 // ============================================================================
