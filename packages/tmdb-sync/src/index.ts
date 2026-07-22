@@ -16,6 +16,12 @@ import {
   mapTmdbPersonExternalIds,
   mapTmdbMovieToTitle,
   mapTmdbTvToTitle,
+  mapTmdbGenres,
+  mapTmdbCountries,
+  mapTmdbCredits,
+  mapTmdbSeason,
+  mapTmdbEpisode,
+  mapTmdbPerson,
 } from '@emdb/tmdb-mapper';
 import { getWikipediaUrlFromWikidataId } from '@emdb/wikidata-client';
 
@@ -47,27 +53,12 @@ export async function importPersonByTmdbId(tmdbId: number) {
     ? await getWikipediaUrlFromWikidataId(wikidata_id)
     : null;
 
+  const mappedPerson = mapTmdbPerson(tmdbPerson, wikiUrl);
+
   const person = await prisma.people.upsert({
     where: { tmdb_id: tmdbId },
-    update: {
-      nom: tmdbPerson.name,
-      genre: tmdbPerson.gender === 1 ? 'femme' : tmdbPerson.gender === 2 ? 'homme' : 'autre',
-      date_naissance: tmdbPerson.birthday ? new Date(tmdbPerson.birthday) : null,
-      pays_id: null,
-      photo_url: tmdbPerson.profile_path ? `https://image.tmdb.org/t/p/w500${tmdbPerson.profile_path}` : null,
-      bio: tmdbPerson.biography,
-      wiki_url: wikiUrl,
-    },
-    create: {
-      tmdb_id: tmdbId,
-      nom: tmdbPerson.name,
-      genre: tmdbPerson.gender === 1 ? 'femme' : tmdbPerson.gender === 2 ? 'homme' : 'autre',
-      date_naissance: tmdbPerson.birthday ? new Date(tmdbPerson.birthday) : null,
-      pays_id: null,
-      photo_url: tmdbPerson.profile_path ? `https://image.tmdb.org/t/p/w500${tmdbPerson.profile_path}` : null,
-      bio: tmdbPerson.biography,
-      wiki_url: wikiUrl,
-    },
+    update: mappedPerson,
+    create: mappedPerson,
   });
 
   return person;
@@ -115,6 +106,46 @@ export async function importEpisodeGuestCredits(
   }
 }
 
+async function ensureGenreIds(genres: { id: number; name: string }[]) {
+  const ids: string[] = [];
+
+  for (const genre of mapTmdbGenres(genres)) {
+    const record = await prisma.genres.upsert({
+      where: { tmdb_id: genre.tmdb_id },
+      create: {
+        tmdb_id: genre.tmdb_id,
+        nom: genre.nom,
+      },
+      update: {
+        nom: genre.nom,
+      },
+    });
+    ids.push(record.id);
+  }
+
+  return ids;
+}
+
+async function ensureCountryIds(countries: { iso_3166_1: string; name: string }[]) {
+  const ids: string[] = [];
+
+  for (const country of mapTmdbCountries(countries)) {
+    const record = await prisma.countries.upsert({
+      where: { code: country.code },
+      create: {
+        code: country.code,
+        nom: country.nom,
+      },
+      update: {
+        nom: country.nom,
+      },
+    });
+    ids.push(record.id);
+  }
+
+  return ids;
+}
+
 export async function importTitleByTmdbId(
   tmdbId: number,
   type: 'film' | 'serie',
@@ -123,11 +154,59 @@ export async function importTitleByTmdbId(
   const titlePayload =
     type === 'film' ? mapTmdbMovieToTitle(tmdbData) : mapTmdbTvToTitle(tmdbData);
 
-  return prisma.titles.upsert({
+  const title = await prisma.titles.upsert({
     where: { tmdb_id: tmdbId },
     create: titlePayload,
     update: titlePayload,
   });
+
+  if (tmdbData.genres?.length) {
+    const genreIds = await ensureGenreIds(tmdbData.genres);
+    await prisma.title_genres.createMany({
+      data: genreIds.map((genreId) => ({ title_id: title.id, genre_id: genreId })),
+      skipDuplicates: true,
+    });
+  }
+
+  if (tmdbData.production_countries?.length) {
+    const countryIds = await ensureCountryIds(tmdbData.production_countries);
+    await prisma.title_countries.createMany({
+      data: countryIds.map((countryId) => ({ title_id: title.id, country_id: countryId })),
+      skipDuplicates: true,
+    });
+  }
+
+  if (tmdbData.credits) {
+    const creditInserts = mapTmdbCredits(tmdbData.credits, title.id, null);
+    for (const credit of creditInserts) {
+      const person = await importPersonByTmdbId(credit.tmdb_person_id);
+      const roleId = await ensureRoleId(credit.role);
+      try {
+        await prisma.credits.create({
+          data: {
+            title_id: title.id,
+            person_id: person.id,
+            episode_id: null,
+            role_id: roleId,
+            personnage: credit.personnage,
+            ordre: credit.ordre,
+            source: 'tmdb',
+          },
+        });
+      } catch (error: any) {
+        if (/duplicate key/i.test(error.message) || /unique constraint/.test(error.message)) {
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
+
+  if (type === 'serie') {
+    await importSeasonsForSerie(title.id);
+  }
+
+  return title;
 }
 
 export async function importSeasonsForSerie(titleId: string) {
@@ -141,6 +220,7 @@ export async function importSeasonsForSerie(titleId: string) {
 
   for (const seasonSummary of seasons) {
     const seasonDetails = await getTvSeason(title.tmdb_id, seasonSummary.season_number);
+    const seasonPayload = mapTmdbSeason(seasonDetails, titleId);
 
     const season = await prisma.seasons.upsert({
       where: {
@@ -149,21 +229,12 @@ export async function importSeasonsForSerie(titleId: string) {
           numero: seasonDetails.season_number,
         },
       },
-      create: {
-        title_id: titleId,
-        numero: seasonDetails.season_number,
-        titre: seasonDetails.name ?? null,
-        date_sortie: seasonDetails.air_date ? new Date(seasonDetails.air_date) : null,
-        synopsis: seasonDetails.overview ?? null,
-      },
-      update: {
-        titre: seasonDetails.name ?? null,
-        date_sortie: seasonDetails.air_date ? new Date(seasonDetails.air_date) : null,
-        synopsis: seasonDetails.overview ?? null,
-      },
+      create: seasonPayload,
+      update: seasonPayload,
     });
 
     for (const episode of seasonDetails.episodes || []) {
+      const episodePayload = mapTmdbEpisode(episode, season.id);
       await prisma.episodes.upsert({
         where: {
           season_id_numero: {
@@ -171,22 +242,8 @@ export async function importSeasonsForSerie(titleId: string) {
             numero: episode.episode_number,
           },
         },
-        create: {
-          season_id: season.id,
-          numero: episode.episode_number,
-          titre: episode.name ?? null,
-          synopsis: episode.overview ?? null,
-          date_sortie: episode.air_date ? new Date(episode.air_date) : null,
-          duree_minutes: episode.runtime ?? null,
-          image_url: episode.still_path ? `https://image.tmdb.org/t/p/w500${episode.still_path}` : null,
-        },
-        update: {
-          titre: episode.name ?? null,
-          synopsis: episode.overview ?? null,
-          date_sortie: episode.air_date ? new Date(episode.air_date) : null,
-          duree_minutes: episode.runtime ?? null,
-          image_url: episode.still_path ? `https://image.tmdb.org/t/p/w500${episode.still_path}` : null,
-        },
+        create: episodePayload,
+        update: episodePayload,
       });
     }
   }
@@ -244,10 +301,11 @@ export async function bootstrapRecommendationsFromTmdb(titleId: string) {
     throw new Error('Titre introuvable ou sans tmdb_id');
   }
 
+  const tmdbId = title.tmdb_id;
   const recommendationFetcher =
     title.type === 'film'
-      ? () => Promise.all([getMovieRecommendations(title.tmdb_id), getMovieSimilar(title.tmdb_id)])
-      : () => Promise.all([getTvRecommendations(title.tmdb_id), getTvSimilar(title.tmdb_id)]);
+      ? () => Promise.all([getMovieRecommendations(tmdbId), getMovieSimilar(tmdbId)])
+      : () => Promise.all([getTvRecommendations(tmdbId), getTvSimilar(tmdbId)]);
 
   const [recommendations, similar] = await recommendationFetcher();
 

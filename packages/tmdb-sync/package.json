@@ -22,8 +22,14 @@
   },
   "jest": {
     "moduleFileExtensions": ["js", "json", "ts"],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
+    "rootDir": ".",
+    "moduleNameMapper": {
+      "^@emdb/db$": "<rootDir>/../db/index.ts",
+      "^@emdb/tmdb-client$": "<rootDir>/../tmdb-client/src/index.ts",
+      "^@emdb/tmdb-mapper$": "<rootDir>/../tmdb-mapper/src/index.ts",
+      "^@emdb/wikidata-client$": "<rootDir>/../wikidata-client/src/index.ts"
+    },
+    "testRegex": "src/.*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },

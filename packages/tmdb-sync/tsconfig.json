@@ -1,6 +1,13 @@
 {
   "extends": "../db/tsconfig.json",
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@emdb/db": ["../db/index.ts"],
+      "@emdb/tmdb-client": ["../tmdb-client/src/index.ts"],
+      "@emdb/tmdb-mapper": ["../tmdb-mapper/src/index.ts"],
+      "@emdb/wikidata-client": ["../wikidata-client/src/index.ts"]
+    },
     "outDir": "./dist"
   },
   "include": ["src/**/*.ts"]
