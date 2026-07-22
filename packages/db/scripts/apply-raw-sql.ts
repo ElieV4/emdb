@@ -1,9 +1,9 @@
 /**
  * Script pour appliquer les objets SQL "hors Prisma" (triggers, fonctions, vues matérialisées)
  * à exécuter après `prisma migrate deploy` en production.
- * 
+ *
  * Source : packages/db/sql/db_init.sql (extrait des objets non gérés par Prisma)
- * 
+ *
  * Usage :
  *   npm run apply:raw-sql
  */
@@ -38,21 +38,21 @@ function extractRawSqlObjects(sqlContent: string): string[] {
     const trimmedLine = line.trim();
 
     // Vérifier si on commence un objet hors-Prisma
-    const isRawObjectStart = RAW_OBJECT_KEYWORDS.some(keyword => 
-      trimmedLine.startsWith(keyword)
-    );
+    const isRawObjectStart = RAW_OBJECT_KEYWORDS.some((keyword) => trimmedLine.startsWith(keyword));
 
     if (isRawObjectStart) {
       inRawObject = true;
       currentObject = [line];
     } else if (inRawObject) {
       currentObject.push(line);
-      
+
       // Terminer l'objet sur un point-virgule suivi d'une ligne vide ou d'un commentaire
-      if (trimmedLine.endsWith(';') && 
-          (lines.indexOf(line) === lines.length - 1 || 
-           lines[lines.indexOf(line) + 1]?.trim() === '' ||
-           lines[lines.indexOf(line) + 1]?.trim().startsWith('--'))) {
+      if (
+        trimmedLine.endsWith(';') &&
+        (lines.indexOf(line) === lines.length - 1 ||
+          lines[lines.indexOf(line) + 1]?.trim() === '' ||
+          lines[lines.indexOf(line) + 1]?.trim().startsWith('--'))
+      ) {
         rawObjects.push(currentObject.join('\n'));
         currentObject = [];
         inRawObject = false;
@@ -85,9 +85,12 @@ async function executeRawSql(sql: string): Promise<void> {
   } catch (error) {
     const errorMessage = String(error);
     // Ignorer les erreurs "already exists" (code PostgreSQL 42710)
-    if (errorMessage.includes('already exists') || 
-        errorMessage.includes('42710') ||
-        errorMessage.includes('42P07')) { // 42P07 = duplicate_table
+    if (
+      errorMessage.includes('already exists') ||
+      errorMessage.includes('42710') ||
+      errorMessage.includes('42P07')
+    ) {
+      // 42P07 = duplicate_table
       console.log('  - Déjà existant, ignoré');
     } else {
       console.error(`  ✗ Échec de l'exécution SQL : ${error}`);
@@ -97,7 +100,7 @@ async function executeRawSql(sql: string): Promise<void> {
 }
 
 async function main() {
-  console.log('[apply-raw-sql] Début de l\'application des objets SQL hors-Prisma...');
+  console.log("[apply-raw-sql] Début de l'application des objets SQL hors-Prisma...");
 
   try {
     // Lire le fichier SQL
@@ -117,21 +120,20 @@ async function main() {
     for (let i = 0; i < rawObjects.length; i++) {
       const sql = rawObjects[i];
       console.log(`  [${i + 1}/${rawObjects.length}] Application...`);
-      
+
       // Afficher la première ligne pour identifier l'objet
       const firstLine = sql.split('\n')[0].trim();
       const objectNameMatch = firstLine.match(/CREATE\s+(?:OR\s+REPLACE\s+)?(\w+)\s+(\w+)/i);
-      const objectDesc = objectNameMatch ? 
-        `${objectNameMatch[1]} ${objectNameMatch[2]}` : 
-        firstLine.substring(0, 50);
-      
+      const objectDesc = objectNameMatch
+        ? `${objectNameMatch[1]} ${objectNameMatch[2]}`
+        : firstLine.substring(0, 50);
+
       console.log(`     → ${objectDesc}...`);
-      
+
       await executeRawSql(sql);
     }
 
     console.log('[apply-raw-sql] ✓ Tous les objets SQL appliqués avec succès.');
-    
   } catch (error) {
     console.error('[apply-raw-sql] Erreur:', error);
     process.exit(1);

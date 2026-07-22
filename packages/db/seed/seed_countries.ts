@@ -234,7 +234,7 @@ const countries = [
   { code: 'TZ', nom: 'Tanzanie' },
   { code: 'TD', nom: 'Tchad' },
   { code: 'TF', nom: 'Terres australes françaises' },
-  { code: 'IO', nom: 'Territoire britannique de l\'océan Indien' },
+  { code: 'IO', nom: "Territoire britannique de l'océan Indien" },
   { code: 'TH', nom: 'Thaïlande' },
   { code: 'TL', nom: 'Timor oriental' },
   { code: 'TG', nom: 'Togo' },
@@ -283,7 +283,9 @@ async function main() {
     }
   }
 
-  console.log(`[seed_countries] Terminé: ${insertedCount} pays insérés, ${skippedCount} déjà présents.`);
+  console.log(
+    `[seed_countries] Terminé: ${insertedCount} pays insérés, ${skippedCount} déjà présents.`,
+  );
 }
 
 main()

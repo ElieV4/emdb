@@ -33,7 +33,7 @@ const FALLBACK_GENRES = [
   { tmdb_id: 10752, nom: 'Guerre' },
   { tmdb_id: 37, nom: 'Western' },
   // Genres séries TMDB spécifiques
-  { tmdb_id: 10759, nom: "Action & Aventure" },
+  { tmdb_id: 10759, nom: 'Action & Aventure' },
   { tmdb_id: 10762, nom: 'Jeunesse' },
   { tmdb_id: 10763, nom: 'Journal télévisé' },
   { tmdb_id: 10764, nom: 'Télé-réalité' },
@@ -56,7 +56,7 @@ interface TmdbGenreList {
 // Fonction pour récupérer les genres depuis l'API TMDB
 async function fetchTmdbGenres(type: 'movie' | 'tv'): Promise<TmdbGenre[]> {
   if (!TMDB_API_KEY) {
-    throw new Error('TMDB_API_KEY non définie dans les variables d\'environnement');
+    throw new Error("TMDB_API_KEY non définie dans les variables d'environnement");
   }
 
   const url = `${TMDB_BASE_URL}/genre/${type}/list?language=fr-FR&api_key=${TMDB_API_KEY}`;
@@ -65,7 +65,7 @@ async function fetchTmdbGenres(type: 'movie' | 'tv'): Promise<TmdbGenre[]> {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(
-      `Échec de la récupération des genres ${type}: ${response.status} ${response.statusText}\n${JSON.stringify(errorData)}`
+      `Échec de la récupération des genres ${type}: ${response.status} ${response.statusText}\n${JSON.stringify(errorData)}`,
     );
   }
 
@@ -88,13 +88,15 @@ async function main() {
     // Fusionner et dédupliquer par tmdb_id (certains genres existent pour films ET séries)
     const mergedGenres = [...movieGenres, ...tvGenres];
     const seenIds = new Set<number>();
-    allGenres = mergedGenres.filter((genre) => {
-      if (seenIds.has(genre.id)) {
-        return false;
-      }
-      seenIds.add(genre.id);
-      return true;
-    }).map((g) => ({ tmdb_id: g.id, nom: g.name }));
+    allGenres = mergedGenres
+      .filter((genre) => {
+        if (seenIds.has(genre.id)) {
+          return false;
+        }
+        seenIds.add(genre.id);
+        return true;
+      })
+      .map((g) => ({ tmdb_id: g.id, nom: g.name }));
 
     console.log(`  ✓ ${allGenres.length} genres récupérés depuis l'API TMDB.`);
   } catch (error) {
@@ -129,7 +131,9 @@ async function main() {
       }
     }
 
-    console.log(`[seed_genres] Terminé: ${insertedCount} genres insérés, ${skippedCount} déjà présents.`);
+    console.log(
+      `[seed_genres] Terminé: ${insertedCount} genres insérés, ${skippedCount} déjà présents.`,
+    );
   } finally {
     await prisma.$disconnect();
   }
