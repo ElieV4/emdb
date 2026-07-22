@@ -10,6 +10,7 @@ import {
   getTvRecommendations,
   getTvSimilar,
   getTvEpisodeDetails,
+  getChanges,
 } from '@emdb/tmdb-client';
 import {
   mapTmdbEpisodeCredits,
@@ -43,6 +44,26 @@ async function ensureRoleId(role: 'acteur' | 'realisateur' | 'scenariste' | 'aut
   });
 
   return roleRecord.id;
+}
+
+type SyncAction = 'importTitle' | 'importPerson' | 'dailySyncNewEpisodes' | 'weeklyResyncChanges';
+
+async function createSyncLog(params: {
+  tmdb_id: number;
+  type: string;
+  action: SyncAction;
+  status: 'started' | 'success' | 'failed';
+  error?: string | null;
+}) {
+  await prisma.tmdb_sync_log.create({
+    data: {
+      tmdb_id: params.tmdb_id,
+      type: params.type,
+      action: params.action,
+      status: params.status,
+      error: params.error ?? null,
+    },
+  });
 }
 
 export async function importPersonByTmdbId(tmdbId: number) {
@@ -150,63 +171,88 @@ export async function importTitleByTmdbId(
   tmdbId: number,
   type: 'film' | 'serie',
 ) {
-  const tmdbData = type === 'film' ? await getMovieDetails(tmdbId) : await getTvDetails(tmdbId);
-  const titlePayload =
-    type === 'film' ? mapTmdbMovieToTitle(tmdbData) : mapTmdbTvToTitle(tmdbData);
-
-  const title = await prisma.titles.upsert({
-    where: { tmdb_id: tmdbId },
-    create: titlePayload,
-    update: titlePayload,
+  await createSyncLog({
+    tmdb_id: tmdbId,
+    type,
+    action: 'importTitle',
+    status: 'started',
   });
 
-  if (tmdbData.genres?.length) {
-    const genreIds = await ensureGenreIds(tmdbData.genres);
-    await prisma.title_genres.createMany({
-      data: genreIds.map((genreId) => ({ title_id: title.id, genre_id: genreId })),
-      skipDuplicates: true,
-    });
-  }
+  try {
+    const tmdbData = type === 'film' ? await getMovieDetails(tmdbId) : await getTvDetails(tmdbId);
+    const titlePayload =
+      type === 'film' ? mapTmdbMovieToTitle(tmdbData) : mapTmdbTvToTitle(tmdbData);
 
-  if (tmdbData.production_countries?.length) {
-    const countryIds = await ensureCountryIds(tmdbData.production_countries);
-    await prisma.title_countries.createMany({
-      data: countryIds.map((countryId) => ({ title_id: title.id, country_id: countryId })),
-      skipDuplicates: true,
+    const title = await prisma.titles.upsert({
+      where: { tmdb_id: tmdbId },
+      create: titlePayload,
+      update: titlePayload,
     });
-  }
 
-  if (tmdbData.credits) {
-    const creditInserts = mapTmdbCredits(tmdbData.credits, title.id, null);
-    for (const credit of creditInserts) {
-      const person = await importPersonByTmdbId(credit.tmdb_person_id);
-      const roleId = await ensureRoleId(credit.role);
-      try {
-        await prisma.credits.create({
-          data: {
-            title_id: title.id,
-            person_id: person.id,
-            episode_id: null,
-            role_id: roleId,
-            personnage: credit.personnage,
-            ordre: credit.ordre,
-            source: 'tmdb',
-          },
-        });
-      } catch (error: any) {
-        if (/duplicate key/i.test(error.message) || /unique constraint/.test(error.message)) {
-          continue;
+    if (tmdbData.genres?.length) {
+      const genreIds = await ensureGenreIds(tmdbData.genres);
+      await prisma.title_genres.createMany({
+        data: genreIds.map((genreId) => ({ title_id: title.id, genre_id: genreId })),
+        skipDuplicates: true,
+      });
+    }
+
+    if (tmdbData.production_countries?.length) {
+      const countryIds = await ensureCountryIds(tmdbData.production_countries);
+      await prisma.title_countries.createMany({
+        data: countryIds.map((countryId) => ({ title_id: title.id, country_id: countryId })),
+        skipDuplicates: true,
+      });
+    }
+
+    if (tmdbData.credits) {
+      const creditInserts = mapTmdbCredits(tmdbData.credits, title.id, null);
+      for (const credit of creditInserts) {
+        const person = await importPersonByTmdbId(credit.tmdb_person_id);
+        const roleId = await ensureRoleId(credit.role);
+        try {
+          await prisma.credits.create({
+            data: {
+              title_id: title.id,
+              person_id: person.id,
+              episode_id: null,
+              role_id: roleId,
+              personnage: credit.personnage,
+              ordre: credit.ordre,
+              source: 'tmdb',
+            },
+          });
+        } catch (error: any) {
+          if (/duplicate key/i.test(error.message) || /unique constraint/.test(error.message)) {
+            continue;
+          }
+          throw error;
         }
-        throw error;
       }
     }
-  }
 
-  if (type === 'serie') {
-    await importSeasonsForSerie(title.id);
-  }
+    if (type === 'serie') {
+      await importSeasonsForSerie(title.id);
+    }
 
-  return title;
+    await createSyncLog({
+      tmdb_id: tmdbId,
+      type,
+      action: 'importTitle',
+      status: 'success',
+    });
+
+    return title;
+  } catch (error: any) {
+    await createSyncLog({
+      tmdb_id: tmdbId,
+      type,
+      action: 'importTitle',
+      status: 'failed',
+      error: error?.message ?? 'unknown error',
+    });
+    throw error;
+  }
 }
 
 export async function importSeasonsForSerie(titleId: string) {
@@ -293,6 +339,153 @@ export async function refreshTitleData(titleId: string) {
     where: { id: titleId },
     data: updatePayload,
   });
+}
+
+export async function dailySyncNewEpisodes() {
+  const titles = await prisma.titles.findMany({
+    where: {
+      type: 'serie',
+      statut_serie: 'en_cours',
+      OR: [
+        { user_follows_serie: { some: {} } },
+        { user_ratings: { some: {} } },
+        { user_watches: { some: {} } },
+      ],
+    },
+    select: {
+      id: true,
+      tmdb_id: true,
+    },
+  });
+
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+
+  let notificationsCreated = 0;
+
+  for (const title of titles) {
+    if (!title.tmdb_id) {
+      continue;
+    }
+
+    await refreshTitleData(title.id);
+    await importSeasonsForSerie(title.id);
+
+    const seasons = await prisma.seasons.findMany({
+      where: { title_id: title.id },
+      select: { id: true },
+    });
+
+    if (seasons.length === 0) {
+      continue;
+    }
+
+    const seasonIds = seasons.map((season) => season.id);
+    const episodes = await prisma.episodes.findMany({
+      where: {
+        season_id: { in: seasonIds },
+        date_sortie: { lte: today },
+      },
+      select: { id: true },
+    });
+
+    if (episodes.length === 0) {
+      continue;
+    }
+
+    const followers = await prisma.user_follows_serie.findMany({
+      where: { title_id: title.id },
+      select: { user_id: true },
+    });
+
+    if (followers.length === 0) {
+      continue;
+    }
+
+    const episodeIds = episodes.map((episode) => episode.id);
+    const followerIds = followers.map((follower) => follower.user_id);
+
+    const existingNotifications = await prisma.notifications.findMany({
+      where: {
+        user_id: { in: followerIds },
+        episode_id: { in: episodeIds },
+        type: 'nouvel_episode',
+      },
+      select: {
+        user_id: true,
+        episode_id: true,
+      },
+    });
+
+    const existingSet = new Set(
+      existingNotifications.map((notification) => `${notification.user_id}:${notification.episode_id}`),
+    );
+
+    const missingNotifications = [] as Array<{
+      user_id: string;
+      episode_id: string;
+      type: string;
+      lu: boolean;
+      created_at: Date;
+    }>;
+
+    for (const follower of followers) {
+      for (const episode of episodes) {
+        const key = `${follower.user_id}:${episode.id}`;
+        if (!existingSet.has(key)) {
+          missingNotifications.push({
+            user_id: follower.user_id,
+            episode_id: episode.id,
+            type: 'nouvel_episode',
+            lu: false,
+            created_at: new Date(),
+          });
+        }
+      }
+    }
+
+    if (missingNotifications.length > 0) {
+      await prisma.notifications.createMany({
+        data: missingNotifications,
+      });
+      notificationsCreated += missingNotifications.length;
+    }
+  }
+
+  return notificationsCreated;
+}
+
+export async function weeklyResyncChanges(startDate: string, endDate: string) {
+  const changes = await getChanges(startDate, endDate);
+  const updatedTitles: Array<{ tmdbId: number; type: 'film' | 'serie' }> = [];
+
+  for (const movieChange of changes.movie?.results || []) {
+    const title = await prisma.titles.findUnique({
+      where: { tmdb_id: movieChange.id },
+    });
+
+    if (!title || title.type !== 'film') {
+      continue;
+    }
+
+    await importTitleByTmdbId(movieChange.id, 'film');
+    updatedTitles.push({ tmdbId: movieChange.id, type: 'film' });
+  }
+
+  for (const tvChange of changes.tv?.results || []) {
+    const title = await prisma.titles.findUnique({
+      where: { tmdb_id: tvChange.id },
+    });
+
+    if (!title || title.type !== 'serie') {
+      continue;
+    }
+
+    await importTitleByTmdbId(tvChange.id, 'serie');
+    updatedTitles.push({ tmdbId: tvChange.id, type: 'serie' });
+  }
+
+  return updatedTitles;
 }
 
 export async function bootstrapRecommendationsFromTmdb(titleId: string) {

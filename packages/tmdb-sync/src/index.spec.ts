@@ -12,6 +12,7 @@ const prismaMock: any = {
   countries: { upsert: jest.fn() },
   title_genres: { createMany: jest.fn() },
   title_countries: { createMany: jest.fn() },
+  tmdb_sync_log: { create: jest.fn() },
 };
 
 jest.mock('@emdb/tmdb-client', () => ({
