@@ -8,13 +8,18 @@
     "db:pull": "dotenv -o -e ../../.env -- prisma db pull",
     "migrate:dev": "dotenv -e ../../.env -- prisma migrate dev",
     "migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
-    "migrate:dry-run": "dotenv -e ../../.env -- prisma validate"
+    "migrate:dry-run": "dotenv -e ../../.env -- prisma validate",
+    "seed:genres": "dotenv -e ../../.env -- ts-node --transpile-only seed/seed_genres.ts",
+    "seed:countries": "dotenv -e ../../.env -- ts-node --transpile-only seed/seed_countries.ts",
+    "seed": "npm run seed:genres && npm run seed:countries"
   },
   "dependencies": {
     "@prisma/client": "^5.18.0"
   },
   "devDependencies": {
     "dotenv-cli": "^7.4.2",
-    "prisma": "^5.18.0"
+    "prisma": "^5.18.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
   }
 }
