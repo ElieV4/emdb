@@ -58,7 +58,9 @@ Prisma ne sait ni créer ni versionner triggers/fonctions/vues matérialisées a
 - [ ] `user_ratings` : double `UNIQUE (user_id, title_id)` / `UNIQUE (user_id, episode_id)` — fonctionne car Postgres ignore les `NULL` dans les contraintes unique, mais à couvrir par un test dédié (comportement parfois surprenant)
 - [ ] `list_items.position` : pas de contrainte d'unicité par liste → gestion applicative du ré-ordonnancement à prévoir côté module `lists` (phase 4)
 - [ ] `user_follows_serie.chk_follow_is_serie` : la contrainte SQL est un placeholder (`CHECK (true)`) — la vraie validation "ce titre est bien de type serie" doit être faite côté application (service layer), Postgres ne peut pas facilement vérifier une valeur d'une autre table dans un CHECK sans trigger dédié ; à ajouter en trigger `BEFORE INSERT` si on veut une garantie dure en base
-
+- Tests unitaires pour les fonctions PL/pgSQL (via `$queryRaw`)
+- Tests d'intégration pour les contraintes de base de données
+- Tests E2E pour les workflows critiques
 ---
 
 ## Phase 2 — Intégration API TMDB (détail à la maille fonction)
@@ -204,12 +206,6 @@ Dis-moi si tu veux que je détaille Phase 3 au même niveau de granularité (fon
 - **Phase 3** : Devrait attendre la fin de la Phase 1 et le début de la Phase 2
 - **Suggestion** : Ajouter des dépendances explicites entre phases
 
-#### 2. **Tests manquants**
-- **Phase 1.5** : Tests de cohérence mentionnés, mais pas de détails sur l'implémentation
-- **Recommandation** : Ajouter une section "Tests" avec :
-  - Tests unitaires pour les fonctions PL/pgSQL (via `$queryRaw`)
-  - Tests d'intégration pour les contraintes de base de données
-  - Tests E2E pour les workflows critiques
 
 #### 3. **Documentation**
 - **Manque** : Pas de section dédiée à la documentation utilisateur/API
