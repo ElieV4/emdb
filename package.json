@@ -19,6 +19,8 @@
     "prisma:generate": "npm run generate --workspace=packages/db",
     "prisma:pull": "npm run db:pull --workspace=packages/db",
     "prisma:migrate:dry-run": "npm run migrate:dry-run --workspace=packages/db",
+    "prisma:apply-raw-sql": "npm run apply:raw-sql --workspace=packages/db",
+    "db:apply-raw-sql": "npm run apply:raw-sql --workspace=packages/db",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f"
