@@ -62,7 +62,9 @@ jobs:
         run: npm run format:check
 
       - name: Appliquer le schéma SQL (db_init.sql) sur la base de CI
-        run: PGPASSWORD=emdb psql -h postgres -U emdb -d emdb -f packages/db/sql/db_init.sql
+        env:
+          PGPASSWORD: emdb
+        run: psql -h postgres -U emdb -d emdb -f packages/db/sql/db_init.sql
 
       - name: Prisma — introspection + validation (dry-run migration)
         run: |
