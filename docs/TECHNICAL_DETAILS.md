@@ -384,6 +384,38 @@ wikidata-client/
 
 ---
 
+#### Package: `@emdb/recommender` (`packages/recommender/`)
+
+**Structure :**
+```
+recommender/
+├── package.json
+├── tsconfig.json
+├── src/
+│   ├── index.ts              # Exports principaux
+│   ├── jaccard.ts            # Utilitaires Jaccard
+│   ├── recommender.ts        # Algorithme de similarité
+│   └── recommender.spec.ts    # Tests unitaires (12 tests)
+└── scripts/
+    └── run-recommendations.ts # CLI pour calcul
+```
+
+**Fichiers principaux :**
+- `src/index.ts` - Exports `computeTitleRecommendations`, `computePersonRecommendations`, `computeAllRecommendations`, `computeRecommendationsForTitle`
+- `src/jaccard.ts` - Fonctions `jaccardSimilarity`, `hasCommonElement`, `hasCommonGenre`
+- `src/recommender.ts` - Algorithme principal avec similarité Jaccard pondérée
+- `scripts/run-recommendations.ts` - Script CLI avec options `--mode`, `--batch`, `--title-id`
+
+**Dépendances :**
+- `@emdb/db` (Prisma) - Seul dépendance, pas d'appels réseau
+
+**Tests unitaires :**
+- 12 tests dans `recommender.spec.ts`
+- Couverture complète des utilitaires Jaccard
+- Tests de similarité, intersection, sets vides
+
+---
+
 ---
 
 ## 🧪 Tests

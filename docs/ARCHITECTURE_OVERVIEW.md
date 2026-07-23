@@ -227,6 +227,14 @@ emdb/
 │       └── src/
 │           └── index.ts
 │
+│   └── recommender/           # Algorithme de recommandation (Phase 5.1)
+│       ├── src/
+│       │   ├── index.ts       # Exports principaux
+│       │   ├── jaccard.ts      # Utilitaires Jaccard
+│       │   └── recommender.ts  # Algorithme de similarité
+│       └── scripts/
+│           └── run-recommendations.ts  # CLI pour calcul
+│
 ├── docs/                      # Documentation
 │   ├── phase-*.md             # Documentation technique par phase
 │   └── ARCHITECTURE_OVERVIEW.md # Ce document
@@ -573,6 +581,7 @@ Toutes les vues sont rafraîchies **toutes les 3 heures** via worker avec `REFRE
 |--------|---------|-------|
 | TMDB API v4 | `@emdb/tmdb-client` | Redis (TTL 24h) |
 | Wikidata | `@emdb/wikidata-client` | Aucun |
+| Calcul local | `@emdb/recommender` | N/A (100% local) |
 
 ---
 
@@ -585,7 +594,7 @@ Toutes les vues sont rafraîchies **toutes les 3 heures** via worker avec `REFRE
 | 2 | Intégration TMDB (client + mapping + sync) | ✅ | packages/tmdb-* |
 | 3 | API Cœur CRUD | ✅ | auth, users, titles, people, seasons-episodes, credits |
 | 4 | Fonctionnalités utilisateur | ✅ | watches, ratings, lists, follows |
-| 5 | Recommandations (algorithme maison) | ✅ | admin, worker |
+| 5 | Recommandations (algorithme maison) | ✅ | admin, worker, packages/recommender |
 | 6 | Dataviz (vues matérialisées) | ✅ | dataviz, admin |
 | 7 | Notifications | 🔄 | worker, notifications |
 

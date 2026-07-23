@@ -298,6 +298,7 @@ Découpage en 3 sous-phases :
 
 ### 5.1 Algorithme de similarité + script de calcul (`packages/recommender`)
   *Dépend de :* titles, genres, credits, people (Phase 3), title_recommendations, person_recommendations (schéma)
+  *Status: ✅ Implémenté*
 
   **Algorithme retenu :** Similarité par Jaccard pondéré :
   - Genres partagés : poids 0.6 (Jaccard sur title_genres)
@@ -309,19 +310,19 @@ Découpage en 3 sous-phases :
   **Nouveau package :** `packages/recommender/`
   - Dépend de `@emdb/db` (Prisma) uniquement (pas de dépendance TMDB)
 
-  - [ ] `computeTitleRecommendations()` : calcule les top 10 titres similaires pour chaque titre
+  - [x] `computeTitleRecommendations()` : calcule les top 10 titres similaires pour chaque titre
     1. Pour chaque titre, charger ses genres (`title_genres`) et ses acteurs/réalisateurs (`credits` avec `roles`)
     2. Pour chaque paire de titres (batch par lot de 100 titres pour éviter OOM), calculer le score Jaccard pondéré
     3. Insérer les top 10 dans `title_recommendations` (batch upsert via `skipDuplicates`)
     4. Nettoyer les anciennes recommandations avant insert (DELETE + INSERT dans une transaction)
 
-  - [ ] `computePersonRecommendations()` : calcule les top 10 personnes similaires pour chaque personne
+  - [x] `computePersonRecommendations()` : calcule les top 10 personnes similaires pour chaque personne
     1. Critère : personnes ayant travaillé ensemble sur les mêmes titres (credits partagés)
     2. Pondération : nombre de credits partagés / total credits (Jaccard sur credits)
     3. Bonus si même genre (homme/femme) : +0.1
     4. Top 10 par score, stocké dans `person_recommendations`
 
-  - [ ] Script exécutable `packages/recommender/scripts/run-recommendations.ts`
+  - [x] Script exécutable `packages/recommender/scripts/run-recommendations.ts`
     - Option `--mode=all` (titles + people), `--mode=titles`, `--mode=people`
     - Option `--batch=100` pour configurer la taille des lots
     - Option `--title-id=xxx` pour calculer pour un seul titre (utile en dev)
@@ -332,6 +333,17 @@ Découpage en 3 sous-phases :
     - `computeTitleRecommendations` : ~quelques minutes (batch de 100)
     - `computePersonRecommendations` : ~30 secondes
   - Optimisation future possible : filtrer les paires sans genre commun (similarité = 0 automatique)
+
+  **Fichiers créés :**
+  - `packages/recommender/src/jaccard.ts` - Utilitaires Jaccard
+  - `packages/recommender/src/recommender.ts` - Algorithme principal
+  - `packages/recommender/src/index.ts` - Exports
+  - `packages/recommender/src/recommender.spec.ts` - 12 tests unitaires
+  - `packages/recommender/scripts/run-recommendations.ts` - CLI
+  - `packages/recommender/package.json` - Configuration npm
+  - `packages/recommender/tsconfig.json` - Configuration TypeScript
+
+  **Tests :** ✅ 12/12 tests unitaires passés
 
 ### 5.2 Module API + intégration worker
   *Dépend de :* Phase 5.1 (algorithme), auth, admin
