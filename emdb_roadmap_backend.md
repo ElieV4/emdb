@@ -66,89 +66,39 @@ Prisma ne sait ni créer ni versionner triggers/fonctions/vues matérialisées a
 ## Phase 2 — Intégration API TMDB (détail à la maille fonction)
 
 ### 2.1 Client TMDB (module `tmdb-client`)
-- [ ] `tmdbClient.ts` : wrapper HTTP (axios/fetch) avec :
+- [x] `tmdbClient.ts` : wrapper HTTP (fetch) avec :
   - base URL `https://api.themoviedb.org/3`
   - auth via header `Authorization: Bearer <TMDB_API_KEY>` (v4) ou `api_key` query param (v3)
-  - gestion du rate limit (~50 req/s en pratique, prévoir un `p-limit` ou `Bottleneck` à 40 req/10s)
-  - retry avec backoff exponentiel sur 429/5xx (`fetch-retry` ou logique maison)
-  - cache Redis en lecture (clé = endpoint+params, TTL configurable, ex: 24h pour les détails, 1h pour les recherches)
-
-- Fonctions bas niveau (1 fonction = 1 endpoint TMDB) :
-  - `searchMovie(query: string, year?: number): Promise<TmdbSearchResult[]>`
-  - `searchTv(query: string, year?: number): Promise<TmdbSearchResult[]>`
-  - `getMovieDetails(tmdbId: number): Promise<TmdbMovieDetails>` (avec `append_to_response=credits,images,videos`)
-  - `getTvDetails(tmdbId: number): Promise<TmdbTvDetails>` (avec `append_to_response=credits,images,content_ratings`)
-  - `getTvSeason(tmdbId: number, seasonNumber: number): Promise<TmdbSeasonDetails>`
-  - `getPersonDetails(personTmdbId: number): Promise<TmdbPersonDetails>`
-  - `getPersonCombinedCredits(personTmdbId: number): Promise<TmdbCombinedCredits>`
-  - `getConfiguration(): Promise<TmdbConfig>` (pour construire les URLs d'images, base_url + tailles)
-  - `getGenreListMovie(): Promise<TmdbGenre[]>`
-  - `getGenreListTv(): Promise<TmdbGenre[]>`
-  - `getMovieExternalIds(tmdbId): Promise<{imdb_id: string}>` — utile si tu veux croiser avec une note IMDb "brute" séparée de TMDB
-  - `getChanges(startDate, endDate): Promise<TmdbChangeItem[]>` — endpoint `/movie/changes` et `/tv/changes`, utile pour ne resynchroniser que ce qui a changé plutôt que tout
-
-Fonction à ajouter	Pourquoi
-searchPerson(query)	Le README prévoit une "page réal ou acteur" mais la 2.1 ne permet de trouver une personne que via un credit — impossible de chercher directement un acteur
-searchMulti(query)	Recherche unifiée films/séries/personnes en une requête (plus adapté à une barre de recherche unique que searchMovie/searchTv séparés)
-getTvExternalIds(tmdbId)	Tu as getMovieExternalIds mais pas l'équivalent séries — donc pas d'imdb_id pour les séries
-getPersonExternalIds(personTmdbId)	Manque complètement. prisma/README.md dit explicitement que people.wiki_url est "résolu via TMDB external_ids (wikidata_id) + API Wikidata", mais aucune fonction ne récupère ce wikidata_id
-getTvEpisodeDetails(tmdbId, season, episode) avec append_to_response=credits	Ton schéma a credits.episode_id (pensé pour les guest stars par épisode), mais rien dans la 2.1 ne va chercher les crédits au niveau épisode — getTvSeason seul ne donne que les épisodes globaux
-getMovieImages(tmdbId) / getTvImages(tmdbId) / getPersonImages(personTmdbId)	Pour des galeries d'affiches/photos si tu veux dépasser le simple affiche_url/photo_url unique
-getMovieVideos(tmdbId) / getTvVideos(tmdbId)	Bandes-annonces — pas dans le schéma actuel mais quasi incontournable pour une page film/série
-getMovieRecommendations(tmdbId) / getMovieSimilar(tmdbId) + équivalents TV	La Phase 5 prévoit un calcul maison des "films/séries connexes", mais TMDB fournit déjà cette donnée — utile en bootstrap ou en complément le temps d'avoir assez de données pour ton propre algo
-getCollectionDetails(collectionId)	TMDB regroupe certains films en "collections" (sagas) — pertinent pour enrichir les "films connexes" sur des franchises, mais pas de table collections dans ton schéma actuel donc à évaluer
-getTrending(mediaType, timeWindow)	Utile pour une page d'accueil/découverte, absent de la roadmap actuelle
-getDiscoverMovie(filters) / getDiscoverTv(filters)	Recherche avancée par genre/année/note — utile si tu veux une page "parcourir" au-delà de la recherche par titre
-
-2. Module tmdb-mapper — mappers manquants (en miroir des endpoints ci-dessus)
-mapTmdbEpisodeCredits(tmdbEpisodeCredits, episodeId) → seul mapper capable de remplir credits.episode_id, actuellement mapTmdbCredits ne mappe qu'au niveau titre
-mapTmdbPersonExternalIds(tmdbExternalIds) → extraction du wikidata_id
-3. Nouveau module wikidata-client (hors TMDB)
-getWikipediaUrlFromWikidataId(wikidataId, lang='fr') — trou net : la doc dit que wiki_url vient de Wikidata, mais aucune fonction n'appelle l'API Wikidata nulle part dans la roadmap. Sans ça, people.wiki_url restera toujours NULL.
-4. Module tmdb-sync — orchestration manquante
-importPersonByTmdbId(tmdbId) — importer une personne en direct (recherche → fiche), pas seulement via un credit de film/série
-importEpisodeGuestCredits(episodeId, tmdbId, season, episode) — peuple enfin credits.episode_id
-refreshPersonData(personId) — rafraîchissement périodique bio/photo, symétrique à refreshTitleData
-bootstrapRecommendationsFromTmdb(titleId) — pré-remplit title_recommendations via TMDB en attendant le batch maison de la Phase 5
-5. Côté packages/db — wrappers manquants pour les vues matérialisées
-
-C'est le trou le plus important pour la Phase 6 (dataviz) : Prisma ignore les vues matérialisées à l'introspection (comme il ignore triggers/fonctions). Donc prisma.mv_watch_time_by_genre.findMany() ne fonctionnera jamais. Il faut des wrappers $queryRaw dans packages/db/src, exactement sur le modèle de functions.ts (countEpisodesNonVus, getSerieProgress) :
-
-getWatchTimeByPeriod(userId)
-getWatchTimeByGenre(userId)
-getWatchTimeByCountry(userId)
-getWatchTimeByAnimation(userId)
-getWatchCountByGenre(userId)
-getWatchCountByPeriod(userId)
-getWatchCountByCountry(userId)
-getWatchCountByAnimation(userId)
+  - gestion du rate limit (token bucket à 40 req/10s avec queue)
+  - retry avec backoff exponentiel sur 429/5xx (3 tentatives max, `Retry-After` respecté)
+  - cache Redis en lecture (clé = url, TTL 24h configurable via `TMDB_CACHE_TTL_SECONDS`)
+- [x] Fonctions bas niveau : `searchMovie`, `searchTv`, `searchPerson`, `searchMulti`, `getMovieDetails`, `getTvDetails`, `getTvSeason`, `getPersonDetails`, `getPersonCombinedCredits`, `getConfiguration`, `getGenreListMovie`, `getGenreListTv`, `getMovieExternalIds`, `getTvExternalIds`, `getPersonExternalIds`, `getTvEpisodeDetails`, `getMovieImages`, `getTvImages`, `getPersonImages`, `getMovieVideos`, `getTvVideos`, `getMovieRecommendations`, `getMovieSimilar`, `getTvRecommendations`, `getTvSimilar`, `getCollectionDetails`, `getTrending`, `getDiscoverMovie`, `getDiscoverTv`, `getChanges`
+- [x] Cache Redis optionnel (graceful fallback si Redis indisponible)
+- [x] Rate limiter avec file d'attente
+- [x] Erreurs TMDB gérées : 401 (clé invalide), 404 (ne pas retry), 429/5xx (retry)
 
 ### 2.2 Mapping TMDB → modèle interne (module `tmdb-mapper`)
-- [ ] `mapTmdbMovieToTitle(tmdbMovie): TitleInsert` — mappe `title/original_title` → `titre_vf/titre_vo`, `release_date` → `date_sortie`, `runtime` → `duree_minutes`, `vote_average` → `note_imdb` (ou champ dédié si tu distingues note TMDB / IMDb réelle), `poster_path` + config → `affiche_url`
-- [ ] `mapTmdbTvToTitle(tmdbTv): TitleInsert` — idem + `status` → `statut_serie` (mapping `Returning Series`→`en_cours`, `Ended`/`Canceled`→`terminee`/`annulee`), `next_episode_to_air` → `next_episode_air_date`
-- [ ] `mapTmdbGenres(tmdbGenres): GenreInsert[]`
-- [ ] `mapTmdbCountries(iso3166List): CountryInsert[]` (ISO fixe, pas de dépendance TMDB pour l'exhaustivité)
-- [ ] `mapTmdbCredits(tmdbCredits, titleId): CreditInsert[]` — sépare `cast` (role='acteur', garde `character` → `personnage`, `order` → `ordre`) et `crew` (filtre `job === 'Director'` → role='realisateur', `job === 'Writer'/'Screenplay'` → role='scenariste', reste → 'autre')
-- [ ] `mapTmdbPerson(tmdbPerson): PersonInsert` — `gender` (0/1/2/3 TMDB) → enum `genre` interne, `place_of_birth` → résolution pays (approximative, à documenter comme limite)
-- [ ] `mapTmdbSeason(tmdbSeason, titleId): SeasonInsert`
-- [ ] `mapTmdbEpisode(tmdbEpisode, seasonId): EpisodeInsert`
+- [x] `mapTmdbMovieToTitle(tmdbMovie): TitleInsert` — mappe `title/original_title` → `titre_vf/titre_vo`, `release_date` → `date_sortie`, `runtime` → `duree_minutes`, `vote_average` → `note_imdb`, `poster_path` → `affiche_url`
+- [x] `mapTmdbTvToTitle(tmdbTv): TitleInsert` — idem + `status` → `statut_serie` (mapping `Returning Series`→`en_cours`, `Ended`/`Canceled`→`terminee`/`annulee`), `next_episode_to_air` → `next_episode_air_date`
+- [x] `mapTmdbGenres(tmdbGenres): GenreInsert[]`
+- [x] `mapTmdbCountries(iso3166List): CountryInsert[]`
+- [x] `mapTmdbCredits(tmdbCredits, titleId): CreditInsert[]` — sépare `cast` (role='acteur', garde `character` → `personnage`, `order` → `ordre`) et `crew` (filtre `job === 'Director'` → role='realisateur', `job === 'Writer'/'Screenplay'` → role='scenariste', reste → 'autre')
+- [x] `mapTmdbPerson(tmdbPerson): PersonInsert` — `gender` (0/1/2/3 TMDB) → enum `genre` interne, `place_of_birth` → résolution pays (approximative)
+- [x] `mapTmdbSeason(tmdbSeason, titleId): SeasonInsert`
+- [x] `mapTmdbEpisode(tmdbEpisode, seasonId): EpisodeInsert`
+- [x] `mapTmdbEpisodeCredits(tmdbEpisodeCredits, episodeId): EpisodeCreditInsert[]`
+- [x] `mapTmdbPersonExternalIds(tmdbExternalIds): { imdb_id, wikidata_id }`
 
 ### 2.3 Orchestration / import (module `tmdb-sync`, exécuté par le worker)
-- [ ] `importTitleByTmdbId(tmdbId: number, type: 'film'|'serie'): Promise<Title>`
-  1. Vérifie si `titles.tmdb_id` existe déjà (upsert plutôt que doublon)
-  2. Appelle `getMovieDetails` ou `getTvDetails`
-  3. Upsert genres/countries manquants (`title_genres`, `title_countries`)
-  4. Upsert credits → pour chaque credit, `upsertPerson()` (voir 2.3.2) puis insert dans `credits`
-  5. Si `type === 'serie'` → déclenche `importSeasonsForSerie(titleId)`
-  6. Log dans `tmdb_sync_log`
-- [ ] `upsertPerson(tmdbPersonSummary): Promise<Person>` — si la personne n'existe pas en base (par `tmdb_id`), fetch `getPersonDetails` complet, sinon réutilise l'existant (évite un appel API par credit)
-- [ ] `importSeasonsForSerie(titleId: string): Promise<void>` — boucle sur les saisons connues via `getTvDetails`, appelle `getTvSeason` pour chacune, upsert `seasons` + `episodes`
-- [ ] `refreshTitleData(titleId: string): Promise<void>` — re-fetch périodique (note, statut, next_episode) sans tout ré-importer (évite de re-toucher `credits` à chaque fois)
-- [ ] `dailySyncNewEpisodes(): Promise<void>` (cron quotidien) :
-  1. Sélectionne les titres `type='serie'` et `statut_serie='en_cours'` suivis (`user_follows_serie`) ou notés/vus
-  2. Pour chacun, `refreshTitleData` + `importSeasonsForSerie` si nouvelle saison détectée
-  3. Si nouvel épisode détecté avec `date_sortie <= today` → insert `notifications` (type='nouvel_episode') pour chaque `user_id` qui suit ce titre
-- [ ] `weeklyResyncChanges(): Promise<void>` (cron hebdo, optionnel/optimisation) : utilise `getChanges` pour ne resynchroniser que les titres modifiés côté TMDB plutôt qu'un refresh complet de toute la base
+- [x] `importTitleByTmdbId(tmdbId, type)` — upsert titre + genres + pays + credits + saisons/épisodes + log
+- [x] `importPersonByTmdbId(tmdbId)` — upsert personne + résolution wikidata_id → wiki_url
+- [x] `importSeasonsForSerie(titleId)` — upsert saisons + épisodes pour une série
+- [x] `importEpisodeGuestCredits(episodeId, tmdbId, season, episode)` — guest stars/crew épisode
+- [x] `refreshTitleData(titleId)` — re-fetch périodique (note, statut, next_episode)
+- [x] `refreshPersonData(personId)` — rafraîchissement bio/photo/wiki_url
+- [x] `dailySyncNewEpisodes()` — cron quotidien : refresh titres en cours + notifications
+- [x] `weeklyResyncChanges(startDate, endDate)` — cron hebdo via getChanges
+- [x] `bootstrapRecommendationsFromTmdb(titleId)` — pré-remplit title_recommendations via TMDB
 
 ### 2.4 File de jobs (BullMQ + Redis)
 - [ ] Queue `tmdb-import` : jobs `import-title`, `import-seasons`, `refresh-title`
@@ -157,15 +107,13 @@ getWatchCountByAnimation(userId)
 - [ ] Dashboard de monitoring (Bull Board) pour debug en dev
 
 ### 2.5 Gestion des erreurs / robustesse
-- [ ] Codes d'erreur TMDB à gérer explicitement : 401 (clé invalide), 404 (id inconnu → ne pas retry), 429 (rate limit → retry avec `Retry-After`)
-- [ ] Idempotence : tous les upserts basés sur `tmdb_id` (contrainte `UNIQUE` déjà en place dans le schéma)
-- [ ] Tests avec mocks HTTP (nock/msw) sur les réponses TMDB pour ne jamais dépendre de l'API réelle en CI
+- [x] Codes d'erreur TMDB gérés explicitement
+- [x] Idempotence via upserts basés sur `tmdb_id` (contrainte UNIQUE)
+- [ ] Tests avec mocks HTTP (nock/msw) sur les réponses TMDB
 
 ---
 
 ## Phase 3 — API backend cœur (endpoints CRUD)
-
-*(moins prioritaire à détailler ici selon ta demande, je reste au niveau module — dis-moi si tu veux que je descende aussi à la maille fonction sur cette phase)*
 
 - [x] Module `auth` : register, login (JWT access+refresh), hash bcrypt, guards NestJS
 - [x] Module `users` : profil, avatar
@@ -174,179 +122,173 @@ getWatchCountByAnimation(userId)
 - [x] Module `seasons-episodes` : lecture, vue par saison
 - [x] Module `credits` : exposé en sous-ressource de `titles`
 
----
 Convention : chaque module NestJS = module / controller / service / dto, connecté à @emdb/db (Prisma) et, quand nécessaire, à tmdb-client / tmdb-sync (Phase 2).
 
-3.0 Socle transverse (préalable à tous les modules)
- Dépendances manquantes dans apps/api/package.json (actuellement absentes) :
-class-validator, class-transformer (DTO validation — indispensable, rien n'est prévu actuellement)
-@nestjs/jwt, @nestjs/passport, passport, passport-jwt (auth)
-bcrypt (hash mot de passe — password_hash existe déjà dans le schéma mais rien ne l'écrit)
-@nestjs/throttler (rate limiting sur les endpoints qui proxient TMDB, pour éviter de cramer le quota API)
- main.ts : ajouter app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
- main.ts : configurer Swagger (@nestjs/swagger est déjà une dépendance mais inutilisée — DocumentBuilder + SwaggerModule.setup('/docs', app, document))
- PrismaModule : wrapper NestJS autour du singleton prisma exporté par @emdb/db, pour l'injecter proprement (@Injectable() PrismaService extends PrismaClient ou provider { provide: 'PRISMA', useValue: prisma }) plutôt que d'importer le singleton partout — facilite les tests avec mocks
- Filtre d'exception global (AllExceptionsFilter) pour formater les erreurs Prisma (P2002, P2025...) en réponses HTTP cohérentes (409, 404...)
- DTOs communs : PaginationDto { page, limit }, PaginatedResult<T> { data, total, page, limit }
-3.1 Module auth
+### 3.0 Socle transverse (préalable à tous les modules)
+- [x] Dépendances : class-validator, class-transformer, @nestjs/jwt, @nestjs/passport, passport, passport-jwt, bcrypt
+- [x] `main.ts` : `app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))`
+- [ ] `main.ts` : configurer Swagger (@nestjs/swagger déjà présent — DocumentBuilder + SwaggerModule.setup('/docs', app, document))
+- [x] `PrismaModule` : wrapper NestJS global autour du singleton prisma
+- [x] Filtre d'exception global (`PrismaExceptionFilter`) pour P2002 → 409, P2025 → 404
+- [ ] DTOs communs : `PaginationDto { page, limit }`, `PaginatedResult<T> { data, total, page, limit }`
 
-⚠️ Gap de schéma à trancher avant de coder : le schéma n'a aucune table pour stocker/révoquer les refresh tokens (pas de refresh_tokens, pas de blacklist). Deux options :
+### 3.1 Module auth
+- [x] POST /auth/register — RegisterDto { email, password, pseudo } → hash bcrypt, retourne { user, accessToken, refreshToken }
+- [x] POST /auth/login — LoginDto { email, password } → vérifie hash, retourne tokens
+- [x] POST /auth/refresh — RefreshDto { refreshToken } → vérifie signature, émet nouvel access token
+- [x] POST /auth/logout — invalidation côté client (stateless JWT)
+- [x] GET /auth/me — utilisateur courant depuis le JWT
+- [x] JwtAuthGuard (Passport) appliqué globalement, sauf /auth/register, /auth/login, /auth/refresh, /health
+- [x] Décorateur @CurrentUser() pour extraire req.user
 
-(a) refresh token stateless (JWT signé, expiration courte type 30j, pas de révocation possible avant expiration) — plus simple, cohérent avec l'app à 2 utilisateurs
-(b) ajouter une table refresh_tokens (user_id, token_hash, expires_at, revoked_at) dans db_init.sql — permet logout réel et révocation
-
-Je recommande (a) pour rester simple vu l'échelle du projet, sauf si tu veux un vrai logout serveur.
-
- POST /auth/register — RegisterDto { email, password, pseudo } → hash bcrypt, users.create, retourne { user, accessToken, refreshToken }
- POST /auth/login — LoginDto { email, password } → vérifie hash, retourne les mêmes tokens
- POST /auth/refresh — RefreshDto { refreshToken } → vérifie signature/expiration, émet un nouvel access token
- POST /auth/logout — invalide côté client uniquement si option (a) ; si (b), révoque en base
- GET /auth/me — retourne l'utilisateur courant depuis le JWT
-
-Fonctions AuthService :
-
-register(dto): Promise<{ user, accessToken, refreshToken }>
-validateUser(email, password): Promise<User | null>
-login(user): Promise<{ accessToken, refreshToken }>
-refresh(refreshToken): Promise<{ accessToken }>
-logout(userId): Promise<void>
- JwtStrategy.validate(payload) → charge l'utilisateur depuis payload.sub
- JwtAuthGuard (Passport) appliqué globalement, sauf /auth/register, /auth/login, /auth/refresh, /health
- Décorateur @CurrentUser() pour extraire req.user dans les controllers
- PasswordService.hash(plain) / PasswordService.compare(plain, hash)
-
-3.2 Module users
-- [x] GET /users/me — profil complet (email, pseudo, avatar_url, created_at)
+### 3.2 Module users
+- [x] GET /users/me — profil complet
 - [x] PATCH /users/me — UpdateProfileDto { pseudo?, avatar_url? }
-- [x] POST /users/me/avatar — upload via multer (@nestjs/platform-express + @types/multer), stockage local `uploads/avatars/` en dev (extensible S3 en prod), validation type MIME + limite 5 Mo
-- [x] GET /users/search?query= — recherche par pseudo/email (insensible à la casse), nécessaire pour list_shares
-- [x] DELETE /users/me — suppression de compte (cascade gérée par les FK ON DELETE CASCADE)
+- [x] POST /users/me/avatar — upload multer, validation MIME + 5 Mo
+- [x] GET /users/search?query= — recherche par pseudo/email
+- [x] DELETE /users/me — suppression compte (cascade FK)
 
-Fonctions UsersService :
+### 3.3 Module titles
+- [x] GET /titles/search?q=&type=film|serie — TMDB + fusion locale
+- [x] GET /titles/tmdb/:tmdbId — get or import synchrone
+- [x] GET /titles/:id — détail complet (genres, pays, studios, saisons)
+- [x] GET /titles — liste paginée avec filtres (type, genre_id, country_id, is_animation, note_imdb_min, tri)
+- [x] GET /titles/:id/recommendations — locale TMDB fallback
+- [x] PATCH /titles/:id/refresh — force refresh TMDB
+- [x] DELETE /titles/:id — suppression si orphelin
 
-getById(id) ✅
-updateProfile(id, dto) ✅
-updateAvatar(id, url) ✅
-findByPseudoOrEmail(query) ✅
-delete(id) ✅
+### 3.4 Module people
+- [x] GET /people/search?q= — TMDB + fusion locale
+- [x] GET /people/tmdb/:tmdbId — get or import
+- [x] GET /people/:id — détail complet (bio, photo, wiki_url, pays)
+- [x] GET /people/:id/filmography — credits → titles groupés par rôle
+- [x] GET /people/:id/credits — alias de filmography
+- [x] GET /people/:id/recommendations — person_recommendations
+- [x] PATCH /people/:id/refresh — refresh TMDB
 
-Implémenté dans `apps/api/src/users/` :
-- `users.controller.ts` — 5 endpoints (GET/PATCH/POST/GET/DELETE)
-- `users.service.ts` — 5 méthodes + sélecteur de champs publics partagé (USER_PUBLIC_SELECT)
-- `dto/upload-avatar.dto.ts` — DTO pour la réponse d'upload
-- `users.service.spec.ts` — 10 tests unitaires (tous passants)
-- `prisma.service.ts` — exposé le client Prisma complet (`this.prisma`) en plus des delegates model
-- `tsconfig.json` — ajout de `"multer"` dans les types
-- `auth.service.ts` — export de l'interface `AuthResponse` (correction d'erreur TS4053 pré-existante)
+### 3.5 Module seasons-episodes
+- [x] GET /titles/:titleId/seasons — liste des saisons avec nombre d'épisodes
+- [x] GET /titles/:titleId/seasons/:numero — détail saison + épisodes
+- [x] GET /episodes/:id — détail épisode avec saison parente
+- [x] GET /episodes/:id/credits — credits spécifiques épisode groupés par rôle
 
- 3.3 Module titles (le plus gros morceau) ✅
-  GET /titles/search?q=&type=film|serie — appelle tmdb-client.searchMovie/searchTv et recherche locale (titre_vo/titre_vf ILIKE), fusionne les résultats en marquant ceux déjà présents localement via tmdb_id
-  GET /titles/tmdb/:tmdbId — "get or import" : cherche par tmdb_id, sinon déclenche tmdb-sync.importTitleByTmdbId(tmdbId, type) (Phase 2.3) de façon synchrone ou via job BullMQ selon la latence acceptable
-  GET /titles/:id — détail complet : titre + genres (title_genres) + pays (title_countries) + studios (title_studios) + saisons si série
-  GET /titles — liste/parcours paginé avec filtres : type, genre_id, country_id, is_animation, note_imdb_min, tri par date_sortie/note_imdb (les index idx_titles_date_sortie et idx_titles_note_imdb existent déjà justement pour ça)
-  GET /titles/:id/credits — cast/crew groupés par rôle (délègue à CreditsService)
-  GET /titles/:id/seasons — pour les séries (délègue à SeasonsEpisodesService)
-  GET /titles/:id/recommendations — lit title_recommendations ; si vide, fallback sur getMovieRecommendations/getMovieSimilar TMDB (cf. bootstrapRecommendationsFromTmdb proposé côté Phase 2)
-  PATCH /titles/:id/refresh — force tmdb-sync.refreshTitleData(id)
-  DELETE /titles/:id — suppression uniquement si orphelin (aucune user_ratings/user_watches/list_items ne le référence) — cohérent avec le principe de "lazy persistence"
+### 3.6 Module credits
+- [x] GET /titles/:titleId/credits — cast/crew groupés par rôle
 
-Fonctions TitlesService :
+---
 
-searchTitles(query, type?) ✅
-getOrImportByTmdbId(tmdbId, type) ✅
-getTitleDetail(id) ✅
-listTitles(filters, pagination) ✅
-getRecommendations(id) ✅
-refreshTitle(id) ✅
-deleteIfOrphan(id) ✅
+## Phase 4 — Fonctionnalités utilisateur (détaillée)
 
-DTOs : SearchTitlesDto ✅, ListTitlesFilterDto ✅, ImportTitleDto ✅
+La Phase 4 implémente les fonctionnalités liées à un utilisateur connecté : visionnage, notation, listes personnelles, suivi de séries et calendrier des épisodes non vus.
 
-Implémenté dans `apps/api/src/titles/` :
-- `titles.controller.ts` — 7 endpoints (search, getOrImport, getDetail, list, getRecommendations, refresh, delete)
-- `titles.service.ts` — 7 méthodes + interfaces TitleSearchResult, PaginatedTitles
-- `titles.module.ts` — module NestJS avec PrismaModule
-- `dto/search-titles.dto.ts`, `dto/list-titles-filter.dto.ts`, `dto/import-title.dto.ts`
-- `titles.service.spec.ts` — 14 tests unitaires (tous passants)
-- `prisma.service.ts` — ajout des delegates user_ratings, user_watches, list_items, user_follows_serie, notifications
-- `app.module.ts` — enregistrement de TitlesModule
-- `package.json` — dépendances @emdb/tmdb-client, @emdb/tmdb-sync ajoutées
-- `packages/tmdb-sync/package.json` — main pointe sur src/index.ts (comme @emdb/db)
-- `packages/tmdb-mapper/tsconfig.json` — exclusion des spec files du build
+Découpage en 4 sous-phases indépendantes (ordre recommandé par dépendances croissantes) :
 
-3.4 Module people
-- [x] GET /people/search?q= — proxy tmdb-client.searchPerson + fusion locale
-- [x] GET /people/tmdb/:tmdbId — get or import (appelle tmdb-sync.importPersonByTmdbId, Phase 2)
-- [x] GET /people/:id — détail (bio, photo, wiki_url, pays, date de naissance, genre)
-- [x] GET /people/:id/filmography — jointure credits → titles, groupée par rôle, triée par date_sortie
-- [x] GET /people/:id/recommendations — lit person_recommendations
-- [x] PATCH /people/:id/refresh — force tmdb-sync.refreshPersonData(id)
+### 4.1 Module `watches` — user_watches + user_follows_serie + calendrier
+  *Dépend de :* auth, titles, seasons-episodes (Phase 3)
+  *Fonctions PL/pgSQL utilisées :* `fn_progress_serie`, `fn_episodes_non_vus` (appel via `$queryRaw`)
 
-Fonctions PeopleService :
+- [ ] `POST /watches` — CreateWatchDto { title_id?, episode_id?, date_vue? } — marquer un titre/épisode comme vu
+  - Validation : soit title_id, soit episode_id (pas les deux, pas aucun)
+  - Si episode_id fourni, résoudre le title_id depuis l'épisode (via seasons)
+  - Si date_vue non fournie, utiliser date du jour
+  - upsert implicite ? Non : un watch par couple user+title ou user+episode est logique (on ne regarde qu'une fois un épisode), mais le schéma n'a pas de contrainte UNIQUE sur user_watches → permettre plusieurs entrées (re-watch)
+- [ ] `DELETE /watches/:id` — supprimer une entrée de visionnage
+- [ ] `GET /watches` — liste des visionnages de l'utilisateur connecté, avec pagination et filtres (type: film|serie, date_from, date_to, title_id optionnel)
+- [ ] `GET /titles/:titleId/progress` — progression pour l'utilisateur connecté (appelle `fn_progress_serie(user_id, title_id)` via `$queryRaw`), retourne { saison, vus, total }[] pour un titre de type serie
+- [ ] `GET /calendar` — calendrier des épisodes non vus (appelle `fn_episodes_non_vus` pour chaque série suivie), trié par nombre d'épisodes non vus décroissant
+  - Retourne : [{ title_id, titre_vo, titre_vf, affiche_url, saison, episode_numero, episode_titre, date_diffusion, nb_non_vus }]
 
-search(query) ✅
-getOrImportByTmdbId(tmdbId) ✅
-getById(id) ✅
-getFilmography(id) ✅
-getRecommendations(id) ✅
-refresh(id) ✅
+Fonctions WatchesService :
 
-Implémenté dans `apps/api/src/people/` :
-- `people.controller.ts` — 6 endpoints (search, getOrImport, getById, getFilmography, getRecommendations, refresh)
-- `people.service.ts` — 6 méthodes + interface PersonSearchResult
-- `people.module.ts` — module NestJS avec PrismaModule
-- `dto/search-people.dto.ts` — DTO validation pour ?q=
-- `people.service.spec.ts` — 17 tests unitaires (tous passants)
-- `prisma.service.ts` — ajout du delegate person_recommendations
-- `app.module.ts` — enregistrement de PeopleModule
+createWatch(userId, dto) — upsert-watch
+deleteWatch(id, userId) — vérifie appartenance
+listWatches(userId, filters, pagination) — avec jointure titles/episodes
+getSerieProgress(userId, titleId) — délègue à packages/db getSerieProgress (fn_progress_serie)
+getCalendar(userId) — délègue à packages/db countEpisodesNonVus (fn_episodes_non_vus)
 
-3.5 Module seasons-episodes
-- [x] GET /titles/:titleId/seasons — liste des saisons (avec nombre d'épisodes)
-- [x] GET /titles/:titleId/seasons/:numero — détail saison + liste des épisodes
-- [x] GET /episodes/:id — détail épisode (synopsis, date_sortie, image_url, durée) avec saison parente
-- [x] GET /episodes/:id/credits — guest stars/crew spécifiques à l'épisode (credits.episode_id), groupés par rôle
+### 4.2 Module `ratings` — user_ratings
+  *Dépend de :* auth, titles
 
-⚠️ Ces endpoints sont user-agnostic (pure lecture du catalogue). Les endpoints utilisateur (fn_progress_serie, fn_episodes_non_vus) sont en Phase 4.
+- [ ] `PUT /ratings` — UpsertRatingDto { title_id?, episode_id?, note_perso? (0-10), commentaire? }
+  - Validation : note_perso optionnelle (nullable), commentaire optionnel (string)
+  - Contrainte unique : UNIQUE(user_id, title_id) et UNIQUE(user_id, episode_id) gérée par Prisma → P2002 catch pour upsert
+  - Si title_id fourni avec un rating existant → UPDATE ; sinon CREATE
+  - Même logique pour episode_id
+  - Le trigger `trg_user_ratings_updated_at` met à jour updated_at automatiquement
+- [ ] `DELETE /ratings/:id` — supprime une note (vérifie appartenance)
+- [ ] `GET /ratings` — liste des notes de l'utilisateur, paginée, avec filtre par type (film/serie)
+- [ ] `GET /titles/:id/ratings` — ratings publics d'un titre (moyenne, répartition)
 
-Fonctions SeasonsEpisodesService :
+Fonctions RatingsService :
 
-listSeasons(titleId) ✅
-getSeason(titleId, numero) ✅
-getEpisode(episodeId) ✅
-getEpisodeCredits(episodeId) ✅
+upsertRating(userId, dto)
+deleteRating(id, userId)
+listUserRatings(userId, filters, pagination)
+getTitleRatingsSummary(titleId) — moyenne, count, répartition par note
 
-Implémenté dans `apps/api/src/seasons-episodes/` :
-- `seasons-episodes.controller.ts` — 4 endpoints publics (routes plates `titles/:titleId/seasons` et `episodes/:id`)
-- `seasons-episodes.service.ts` — 4 méthodes avec PrismaService
-- `seasons-episodes.module.ts` — module NestJS avec PrismaModule
-- `seasons-episodes.service.spec.ts` — 11 tests unitaires (tous passants)
-- `app.module.ts` — enregistrement de SeasonsEpisodesModule
+### 4.3 Module `lists` — user_lists + list_items + list_shares
+  *Dépend de :* auth, users (pour le partage), titles
+  *Gap applicatif :* `list_items.position` pas de contrainte d'unicité → gestion soft dans le service (auto-incrément par défaut, réordonnancement explicite via PATCH)
 
-3.6 Module credits
-- [x] GET /titles/:titleId/credits — groupé cast (role=acteur, trié par ordre) / crew (réalisateur, scénariste...) — utilise la table roles
-- [x] GET /episodes/:episodeId/credits — credits spécifiques épisode (délégué à SeasonsEpisodesService, Phase 3.5)
-- [x] GET /people/:personId/credits — alias vers getFilmography (PeopleService, Phase 3.4)
+#### user_lists
+- [ ] `POST /lists` — CreateListDto { nom, type (watchlist|favoris|custom), description? }
+- [ ] `GET /lists` — liste des listes de l'utilisateur connecté
+- [ ] `GET /lists/:id` — détail d'une liste avec ses items (titles)
+- [ ] `PATCH /lists/:id` — UpdateListDto { nom?, description? }
+- [ ] `DELETE /lists/:id` — suppression (cascade sur list_items et list_shares)
 
-Fonctions CreditsService :
+#### list_items
+- [ ] `POST /lists/:listId/items` — AddItemDto { title_id } — ajoute un titre à la liste
+  - position : auto-incrément (max(position) + 1 dans la liste)
+- [ ] `DELETE /lists/:listId/items/:titleId` — retire un titre de la liste
+- [ ] `PATCH /lists/:listId/items/reorder` — ReorderDto { items: [{ title_id, position }] } — réordonnancement batch
+  - Met à jour la position de chaque item dans une transaction
 
-getTitleCredits(titleId) ✅ — credits sans episode_id, groupés par rôle
-(les autres fonctions sont déléguées aux services existants)
+#### list_shares
+- [ ] `POST /lists/:listId/shares` — ShareListDto { shared_with_user_id, permission (lecture|edition) }
+- [ ] `GET /lists/:listId/shares` — liste des partages
+- [ ] `DELETE /lists/:listId/shares/:sharedWithUserId` — retire un partage
+- [ ] `GET /shared-lists` — listes partagées avec l'utilisateur connecté (lecture seule si permission=lecture)
 
-Implémenté dans `apps/api/src/credits/` :
-- `credits.controller.ts` — 1 endpoint public `GET /titles/:titleId/credits`
-- `credits.service.ts` — 1 méthode `getTitleCredits`
-- `credits.module.ts` — module NestJS avec PrismaModule
-- `credits.service.spec.ts` — 3 tests unitaires (tous passants)
-- `app.module.ts` — enregistrement de CreditsModule
-- `people.controller.ts` — ajout alias `GET /people/:id/credits` → `getFilmography()`
+Fonctions ListsService / ListItemsService / ListSharesService :
 
+createList(userId, dto)
+getUserLists(userId)
+getListDetail(listId, userId) — vérifie accès (propriétaire ou partagé)
+updateList(listId, userId, dto)
+deleteList(listId, userId)
+addItem(listId, userId, titleId)
+removeItem(listId, userId, titleId)
+reorderItems(listId, userId, dto)
+shareList(listId, userId, dto)
+getShares(listId, userId)
+removeShare(listId, userId, sharedWithUserId)
+getSharedLists(userId)
 
-## Phase 4 — Fonctionnalités utilisateur
+### 4.4 Module `follows` — user_follows_serie
+  *Dépend de :* auth, titles
+  *Contrainte :* `chk_follow_is_serie` est un placeholder CHECK(true) — la validation "ce titre est bien une série" doit être faite applicativement
 
-- [ ] `user_watches` : marquer vu (titre ou épisode), vue datée par saison via `fn_progress_serie`
-- [ ] `user_ratings` : note perso + commentaire, upsert (create ou update selon existence)
-- [ ] `user_lists` / `list_items` / `list_shares` : CRUD listes, réordonnancement, partage lecture/édition
-- [ ] Calendrier : endpoint basé sur `fn_episodes_non_vus` + `user_follows_serie`, tri par nombre d'épisodes non vus
+- [ ] `POST /follows` — FollowSerieDto { title_id } — suivre une série
+  - Vérification applicative : le titre doit être de type 'serie'
+  - Doublon géré par contrainte UNIQUE(user_id, title_id)
+- [ ] `DELETE /follows/:titleId` — ne plus suivre une série
+- [ ] `GET /follows` — liste des séries suivies par l'utilisateur
+
+Fonctions FollowsService :
+
+follow(userId, titleId)
+unfollow(userId, titleId)
+getFollowedSeries(userId)
+
+---
+
+## Ordre d'exécution recommandé dans la Phase 4
+
+1. **Phase 4.1** (watches) — le plus indépendant, débloque le calendrier
+2. **Phase 4.2** (ratings) — indépendant de watches
+3. **Phase 4.4** (follows) — indépendant, nécessaire pour le calendrier watches
+4. **Phase 4.3** (lists) — le plus gros, nécessite les autres pour bien tester
 
 ---
 
@@ -374,19 +316,18 @@ Implémenté dans `apps/api/src/credits/` :
 
 ---
 
-## Ordre d'exécution recommandé
+## Ordre d'exécution recommandé (global)
 
 1. Phase 0 (socle : docker-compose, repo, config)
-2. Phase 1.1 (exécuter `db_init_v2.sql` + introspection Prisma) — schéma déjà validé, pas d'aller-retour attendu ici
-3. Phase 2 (client TMDB + mapping + import d'un seul titre en dur, testé manuellement)
-4. Phase 3 (API CRUD Prisma, pour consommer les données importées)
-5. Phase 4 (features utilisateur : watches, ratings, listes, calendrier via `fn_episodes_non_vus`)
-6. Phase 2.3 cron (`dailySyncNewEpisodes`) + Phase 7 (notifications, basées sur `user_follows_serie`)
+2. Phase 1.1 (exécuter `db_init_v2.sql` + introspection Prisma)
+3. Phase 2 (client TMDB + mapping + import)
+4. Phase 3 (API CRUD Prisma)
+5. Phase 4 (features utilisateur)
+6. Phase 2.3 cron (`dailySyncNewEpisodes`) + Phase 7 (notifications)
 7. Phase 5 (recommandations, batch mensuel)
 8. Phase 6 (dataviz, lecture des `mv_*` déjà en place depuis la phase 1)
 
 Fichiers de référence : `db_init_v3.sql` (schéma complet avec 8 vues matérialisées), cette roadmap.
-Dis-moi si tu veux que je détaille Phase 3 au même niveau de granularité (fonction par fonction, endpoint par endpoint).
 
 ---
 
@@ -454,6 +395,15 @@ Dis-moi si tu veux que je détaille Phase 3 au même niveau de granularité (fon
 - **Corrigé** : Utilisation de `env:` pour PGPASSWORD
 - **Corrigé** : Changement de répertoire pour les commandes Prisma
 
+### Phase 3 réalisée
+- **3.1 Auth** : register, login, refresh, logout, me ✅
+- **3.2 Users** : CRUD profil + avatar ✅
+- **3.3 Titles** : search, getOrImport, detail, list, recommendations, refresh, delete ✅
+- **3.4 People** : search, getOrImport, detail, filmography, credits, recommendations, refresh ✅
+- **3.5 Seasons-Episodes** : list seasons, get season, get episode, episode credits ✅
+- **3.6 Credits** : title credits groupés par rôle ✅
+
 ---
 
-*Dernière mise à jour : 22 juillet 2026*
+*Dernière mise à jour : 23 juillet 2026*
+
