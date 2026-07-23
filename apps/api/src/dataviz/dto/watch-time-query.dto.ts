@@ -1,4 +1,4 @@
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
 
 /**
@@ -26,4 +26,3 @@ export class WatchTimeQueryDto {
   @Max(2100)
   yearTo?: number;
 }
-
