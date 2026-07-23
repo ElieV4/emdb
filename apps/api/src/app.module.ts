@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
+import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
@@ -16,6 +17,7 @@ import { DatavizModule } from './dataviz/dataviz.module';
       isGlobal: true,
     }),
     PrismaModule,
+    AdminModule,
     AuthModule,
     UsersModule,
     TitlesModule,

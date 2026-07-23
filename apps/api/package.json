@@ -26,8 +26,10 @@
     "@nestjs/platform-express": "^10.4.1",
     "@nestjs/swagger": "^7.4.0",
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.81.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.4",
+    "ioredis": "^5.11.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
@@ -50,7 +52,7 @@
     "ts-loader": "^9.5.1",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0"
- },
+  },
   "jest": {
     "moduleFileExtensions": [
       "js",
