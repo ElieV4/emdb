@@ -283,11 +283,85 @@ getFollowedSeries(userId)
 
 ---
 
-## Phase 5 — Recommandations (batch)
+## Phase 5 — Recommandations batch (algorithme de similarité maison)
 
-- [ ] Job `computeTitleRecommendations()` : similarité par genres partagés + acteurs/réals partagés (pondération), écrit dans `title_recommendations`
-- [ ] Job `computePersonRecommendations()` : personnes ayant travaillé ensemble fréquemment ou genres similaires
-- [ ] Cron mensuel (recalcul coûteux, pas temps réel)
+Découpage en 3 sous-phases :
+
+### 5.1 Algorithme de similarité + script de calcul (`packages/recommender`)
+  *Dépend de :* titles, genres, credits, people (Phase 3), title_recommendations, person_recommendations (schéma)
+
+  **Algorithme retenu :** Similarité par Jaccard pondéré :
+  - Genres partagés : poids 0.6 (Jaccard sur title_genres)
+  - Acteurs partagés : poids 0.3 (Jaccard sur credits avec role='acteur', top 10 par ordre)
+  - Réalisateurs partagés : poids 0.1 (Jaccard sur credits avec role='realisateur')
+  - Score final = 0.6 × genre_jaccard + 0.3 × actor_jaccard + 0.1 × director_jaccard
+  - Normalisé entre 0 et 1, stocké dans score DECIMAL(5,4)
+
+  **Nouveau package :** `packages/recommender/`
+  - Dépend de `@emdb/db` (Prisma) uniquement (pas de dépendance TMDB)
+
+  - [ ] `computeTitleRecommendations()` : calcule les top 10 titres similaires pour chaque titre
+    1. Pour chaque titre, charger ses genres (`title_genres`) et ses acteurs/réalisateurs (`credits` avec `roles`)
+    2. Pour chaque paire de titres (batch par lot de 100 titres pour éviter OOM), calculer le score Jaccard pondéré
+    3. Insérer les top 10 dans `title_recommendations` (batch upsert via `skipDuplicates`)
+    4. Nettoyer les anciennes recommandations avant insert (DELETE + INSERT dans une transaction)
+
+  - [ ] `computePersonRecommendations()` : calcule les top 10 personnes similaires pour chaque personne
+    1. Critère : personnes ayant travaillé ensemble sur les mêmes titres (credits partagés)
+    2. Pondération : nombre de credits partagés / total credits (Jaccard sur credits)
+    3. Bonus si même genre (homme/femme) : +0.1
+    4. Top 10 par score, stocké dans `person_recommendations`
+
+  - [ ] Script exécutable `packages/recommender/scripts/run-recommendations.ts`
+    - Option `--mode=all` (titles + people), `--mode=titles`, `--mode=people`
+    - Option `--batch=100` pour configurer la taille des lots
+    - Option `--title-id=xxx` pour calculer pour un seul titre (utile en dev)
+    - Logging : console.table des 3 meilleurs scores par titre/personne
+
+  **Performance attendue :**
+  - Pour N titres, complexité O(N² × (genres + credits)). Avec 10 000 titres et ~1000 personnes :
+    - `computeTitleRecommendations` : ~quelques minutes (batch de 100)
+    - `computePersonRecommendations` : ~30 secondes
+  - Optimisation future possible : filtrer les paires sans genre commun (similarité = 0 automatique)
+
+### 5.2 Module API + intégration worker
+  *Dépend de :* Phase 5.1 (algorithme), auth, admin
+
+  - [ ] Endpoint `POST /admin/compute-recommendations` — déclenchement manuel
+    - Body : `{ mode?: 'titles' | 'people' | 'all' }`
+    - Auth : JWT + rôle admin (vérification simple via un flag ou email fixe)
+    - Execution synchrone ou via BullMQ selon la latence
+    - Retour : `{ success: true, titles_computed: number, people_computed: number }`
+
+  - [ ] **BullMQ** : Queue `recommendations` avec job `compute-recommendations`
+    - Concurrency : 1 (calcul lourd, pas parallélisable sans risque de conflit)
+    - Timeout : 30 minutes (évite le kill du worker pour les longs calculs)
+
+  - [ ] **Cron mensuel** : job planifié `compute-recommendations-cron`
+    - Exécuté le 1er de chaque mois à 03:00
+    - Mode 'all'
+    - Notification en cas d'échec (log + métrique)
+
+  - [ ] Module API `recommender` dans NestJS (optionnel si on veut exposer des stats)
+    - `GET /admin/recommendations/stats` — statistiques : nombre total de recommandations calculées, date du dernier run, durée du dernier run
+
+### 5.3 Fallback TMDB pour person_recommendations
+  *Dépend de :* Phase 2.3 (tmdb-sync), Phase 5.1 (algorithme maison)
+
+  - [ ] `bootstrapPersonRecommendationsFromTmdb(personId)` — symétrique de `bootstrapRecommendationsFromTmdb` pour les titres
+    - Utilise `getPersonCombinedCredits` pour trouver les personnes avec qui cette personne a travaillé
+    - Calcule un score basé sur le nombre de collaborations
+
+  - [ ] Fallback dans `GET /people/:id/recommendations` : si `person_recommendations` est vide, appeler TMDB
+    - Déjà implémenté pour les titres dans Phase 3.3, à étendre aux personnes
+
+---
+
+## Ordre d'exécution recommandé (Phase 5)
+
+1. **Phase 5.1** — algorithme + script (le cœur, testable sans API)
+2. **Phase 5.2** — endpoint de déclenchement + worker (nécessite 5.1)
+3. **Phase 5.3** — fallback TMDB (indépendant / peut être fait en parallèle de 5.2)
 
 ---
 
