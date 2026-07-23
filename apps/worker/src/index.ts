@@ -1,23 +1,26 @@
 /**
  * Point d'entrée du worker.
- * Phase 0 : placeholder qui confirme juste la connexion Redis au démarrage.
- * Les queues BullMQ (tmdb-import, tmdb-cron) seront ajoutées en Phase 2.4.
+ * Phase 2.4 : queues BullMQ pour import TMDB et tâches cron.
  */
-import Redis from 'ioredis';
+import { createImportQueue, createCronQueue, createImportWorker, createCronWorker, ensureRepeatableCronJobs } from './worker';
 
 async function main() {
   const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
-  const redis = new Redis(redisUrl);
 
-  redis.on('connect', () => {
-    // eslint-disable-next-line no-console
-    console.log('[worker] connecté à Redis, en attente des queues BullMQ (Phase 2.4)');
-  });
+  const importQueue = createImportQueue(redisUrl);
+  const cronQueue = createCronQueue(redisUrl);
 
-  redis.on('error', (err) => {
-    // eslint-disable-next-line no-console
-    console.error('[worker] erreur Redis :', err.message);
-  });
+  createImportWorker(redisUrl);
+  createCronWorker(redisUrl);
+
+  await ensureRepeatableCronJobs(cronQueue);
+
+  // eslint-disable-next-line no-console
+  console.log('[worker] BullMQ démarré : queues tmdb-import et tmdb-cron actives');
 }
 
-main();
+main().catch((error) => {
+  // eslint-disable-next-line no-console
+  console.error('[worker] erreur fatale :', error);
+  process.exit(1);
+});

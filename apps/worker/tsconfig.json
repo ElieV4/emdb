@@ -2,7 +2,15 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "baseUrl": ".",
+    "paths": {
+      "@emdb/db": ["../../packages/db/index.ts"],
+      "@emdb/tmdb-sync": ["../../packages/tmdb-sync/src/index.ts"],
+      "@emdb/tmdb-client": ["../../packages/tmdb-client/src/index.ts"],
+      "@emdb/tmdb-mapper": ["../../packages/tmdb-mapper/src/index.ts"],
+      "@emdb/wikidata-client": ["../../packages/wikidata-client/src/index.ts"]
+    }
   },
   "include": ["src/**/*.ts"]
 }
