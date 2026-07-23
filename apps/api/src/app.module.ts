@@ -11,6 +11,7 @@ import { SeasonsEpisodesModule } from './seasons-episodes/seasons-episodes.modul
 import { CreditsModule } from './credits/credits.module';
 import { DatavizModule } from './dataviz/dataviz.module';
 import { WatchesModule } from './watches/watches.module';
+import { RatingsModule } from './ratings/ratings.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { WatchesModule } from './watches/watches.module';
     CreditsModule,
     DatavizModule,
     WatchesModule,
+    RatingsModule,
   ],
   controllers: [AppController],
 })
