@@ -10,6 +10,7 @@ import { PeopleModule } from './people/people.module';
 import { SeasonsEpisodesModule } from './seasons-episodes/seasons-episodes.module';
 import { CreditsModule } from './credits/credits.module';
 import { DatavizModule } from './dataviz/dataviz.module';
+import { WatchesModule } from './watches/watches.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { DatavizModule } from './dataviz/dataviz.module';
     SeasonsEpisodesModule,
     CreditsModule,
     DatavizModule,
+    WatchesModule,
   ],
   controllers: [AppController],
 })
