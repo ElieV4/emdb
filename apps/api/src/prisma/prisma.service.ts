@@ -19,6 +19,24 @@ export class PrismaService implements OnModuleDestroy {
 
   // Delegates model pour un accès pratique (ex: this.prisma.users.findUnique)
   users = prisma.users;
+  titles = prisma.titles;
+  title_genres = prisma.title_genres;
+  title_countries = prisma.title_countries;
+  title_studios = prisma.title_studios;
+  title_recommendations = prisma.title_recommendations;
+  credits = prisma.credits;
+  roles = prisma.roles;
+  seasons = prisma.seasons;
+  episodes = prisma.episodes;
+  people = prisma.people;
+  genres = prisma.genres;
+  countries = prisma.countries;
+  studios = prisma.studios;
+  user_ratings = prisma.user_ratings;
+  user_watches = prisma.user_watches;
+  list_items = prisma.list_items;
+  user_follows_serie = prisma.user_follows_serie;
+  notifications = prisma.notifications;
 
   onModuleDestroy() {
     return prisma.$disconnect();

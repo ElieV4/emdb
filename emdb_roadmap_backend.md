@@ -239,28 +239,40 @@ Implémenté dans `apps/api/src/users/` :
 - `tsconfig.json` — ajout de `"multer"` dans les types
 - `auth.service.ts` — export de l'interface `AuthResponse` (correction d'erreur TS4053 pré-existante)
 
-3.3 Module titles (le plus gros morceau)
- GET /titles/search?q=&type=film|serie — appelle tmdb-client.searchMovie/searchTv et recherche locale (titre_vo/titre_vf ILIKE), fusionne les résultats en marquant ceux déjà présents localement via tmdb_id
- GET /titles/tmdb/:tmdbId — "get or import" : cherche par tmdb_id, sinon déclenche tmdb-sync.importTitleByTmdbId(tmdbId, type) (Phase 2.3) de façon synchrone ou via job BullMQ selon la latence acceptable
- GET /titles/:id — détail complet : titre + genres (title_genres) + pays (title_countries) + studios (title_studios) + saisons si série
- GET /titles — liste/parcours paginé avec filtres : type, genre_id, country_id, is_animation, note_imdb_min, tri par date_sortie/note_imdb (les index idx_titles_date_sortie et idx_titles_note_imdb existent déjà justement pour ça)
- GET /titles/:id/credits — cast/crew groupés par rôle (délègue à CreditsService)
- GET /titles/:id/seasons — pour les séries (délègue à SeasonsEpisodesService)
- GET /titles/:id/recommendations — lit title_recommendations ; si vide, fallback sur getMovieRecommendations/getMovieSimilar TMDB (cf. bootstrapRecommendationsFromTmdb proposé côté Phase 2)
- PATCH /titles/:id/refresh — force tmdb-sync.refreshTitleData(id)
- DELETE /titles/:id — suppression uniquement si orphelin (aucune user_ratings/user_watches/list_items ne le référence) — cohérent avec le principe de "lazy persistence"
+ 3.3 Module titles (le plus gros morceau) ✅
+  GET /titles/search?q=&type=film|serie — appelle tmdb-client.searchMovie/searchTv et recherche locale (titre_vo/titre_vf ILIKE), fusionne les résultats en marquant ceux déjà présents localement via tmdb_id
+  GET /titles/tmdb/:tmdbId — "get or import" : cherche par tmdb_id, sinon déclenche tmdb-sync.importTitleByTmdbId(tmdbId, type) (Phase 2.3) de façon synchrone ou via job BullMQ selon la latence acceptable
+  GET /titles/:id — détail complet : titre + genres (title_genres) + pays (title_countries) + studios (title_studios) + saisons si série
+  GET /titles — liste/parcours paginé avec filtres : type, genre_id, country_id, is_animation, note_imdb_min, tri par date_sortie/note_imdb (les index idx_titles_date_sortie et idx_titles_note_imdb existent déjà justement pour ça)
+  GET /titles/:id/credits — cast/crew groupés par rôle (délègue à CreditsService)
+  GET /titles/:id/seasons — pour les séries (délègue à SeasonsEpisodesService)
+  GET /titles/:id/recommendations — lit title_recommendations ; si vide, fallback sur getMovieRecommendations/getMovieSimilar TMDB (cf. bootstrapRecommendationsFromTmdb proposé côté Phase 2)
+  PATCH /titles/:id/refresh — force tmdb-sync.refreshTitleData(id)
+  DELETE /titles/:id — suppression uniquement si orphelin (aucune user_ratings/user_watches/list_items ne le référence) — cohérent avec le principe de "lazy persistence"
 
 Fonctions TitlesService :
 
-searchTitles(query, type?)
-getOrImportByTmdbId(tmdbId, type)
-getTitleDetail(id)
-listTitles(filters, pagination)
-getRecommendations(id)
-refreshTitle(id)
-deleteIfOrphan(id)
+searchTitles(query, type?) ✅
+getOrImportByTmdbId(tmdbId, type) ✅
+getTitleDetail(id) ✅
+listTitles(filters, pagination) ✅
+getRecommendations(id) ✅
+refreshTitle(id) ✅
+deleteIfOrphan(id) ✅
 
-DTOs : SearchTitlesDto, ListTitlesFilterDto, ImportTitleDto
+DTOs : SearchTitlesDto ✅, ListTitlesFilterDto ✅, ImportTitleDto ✅
+
+Implémenté dans `apps/api/src/titles/` :
+- `titles.controller.ts` — 7 endpoints (search, getOrImport, getDetail, list, getRecommendations, refresh, delete)
+- `titles.service.ts` — 7 méthodes + interfaces TitleSearchResult, PaginatedTitles
+- `titles.module.ts` — module NestJS avec PrismaModule
+- `dto/search-titles.dto.ts`, `dto/list-titles-filter.dto.ts`, `dto/import-title.dto.ts`
+- `titles.service.spec.ts` — 14 tests unitaires (tous passants)
+- `prisma.service.ts` — ajout des delegates user_ratings, user_watches, list_items, user_follows_serie, notifications
+- `app.module.ts` — enregistrement de TitlesModule
+- `package.json` — dépendances @emdb/tmdb-client, @emdb/tmdb-sync ajoutées
+- `packages/tmdb-sync/package.json` — main pointe sur src/index.ts (comme @emdb/db)
+- `packages/tmdb-mapper/tsconfig.json` — exclusion des spec files du build
 
 3.4 Module people
  GET /people/search?q= — proxy tmdb-client.searchPerson + fusion locale
