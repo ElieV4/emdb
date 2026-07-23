@@ -8,7 +8,8 @@
       "@emdb/tmdb-mapper": ["../tmdb-mapper/src/index.ts"],
       "@emdb/wikidata-client": ["../wikidata-client/src/index.ts"]
     },
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "types": ["node", "jest"]
   },
   "include": ["src/**/*.ts"]
 }

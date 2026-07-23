@@ -7,7 +7,7 @@ import * as bcrypt from 'bcrypt';
 type UserRecord = NonNullable<Awaited<ReturnType<PrismaService['users']['findUnique']>>>;
 export type AuthenticatedUser = Omit<UserRecord, 'password_hash'>;
 
-interface AuthResponse {
+export interface AuthResponse {
   user: AuthenticatedUser;
   accessToken: string;
   refreshToken: string;

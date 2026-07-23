@@ -3,8 +3,11 @@
   "compilerOptions": {
     "module": "commonjs",
     "moduleResolution": "node",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
     "outDir": "./dist",
-    "baseUrl": "."
+    "baseUrl": ".",
+    "types": ["node"]
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist"]

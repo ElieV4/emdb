@@ -168,7 +168,7 @@ getWatchCountByAnimation(userId)
 *(moins prioritaire à détailler ici selon ta demande, je reste au niveau module — dis-moi si tu veux que je descende aussi à la maille fonction sur cette phase)*
 
 - [ ] Module `auth` : register, login (JWT access+refresh), hash bcrypt, guards NestJS
-- [ ] Module `users` : profil, avatar
+- [x] Module `users` : profil, avatar
 - [ ] Module `titles` : recherche (proxy TMDB + résultats déjà en local mergés), détail titre, déclenchement d'import si absent de la base
 - [ ] Module `people` : détail personne + filmographie (via `credits`)
 - [ ] Module `seasons-episodes` : lecture, vue par saison
@@ -214,20 +214,31 @@ logout(userId): Promise<void>
  JwtAuthGuard (Passport) appliqué globalement, sauf /auth/register, /auth/login, /auth/refresh, /health
  Décorateur @CurrentUser() pour extraire req.user dans les controllers
  PasswordService.hash(plain) / PasswordService.compare(plain, hash)
+
 3.2 Module users
- GET /users/me — profil complet (email, pseudo, avatar_url, created_at)
- PATCH /users/me — UpdateProfileDto { pseudo?, avatar_url? }
- POST /users/me/avatar — upload via multer (déjà dépendance de @nestjs/platform-express), stockage à définir (Supabase Storage a été explicitement écarté pour les images de titres/personnes — à clarifier si ça s'applique aussi aux avatars utilisateurs, ou si on autorise une exception ici vu le faible volume)
- GET /users/search?query= — recherche par pseudo/email, nécessaire pour list_shares : il faut bien un moyen de trouver l'autre utilisateur (toi + la 2ᵉ personne) pour partager une liste
- DELETE /users/me — suppression de compte (cascade déjà géré par les FK ON DELETE CASCADE)
+- [x] GET /users/me — profil complet (email, pseudo, avatar_url, created_at)
+- [x] PATCH /users/me — UpdateProfileDto { pseudo?, avatar_url? }
+- [x] POST /users/me/avatar — upload via multer (@nestjs/platform-express + @types/multer), stockage local `uploads/avatars/` en dev (extensible S3 en prod), validation type MIME + limite 5 Mo
+- [x] GET /users/search?query= — recherche par pseudo/email (insensible à la casse), nécessaire pour list_shares
+- [x] DELETE /users/me — suppression de compte (cascade gérée par les FK ON DELETE CASCADE)
 
 Fonctions UsersService :
 
-getById(id)
-updateProfile(id, dto)
-updateAvatar(id, url)
-findByPseudoOrEmail(query)
-delete(id)
+getById(id) ✅
+updateProfile(id, dto) ✅
+updateAvatar(id, url) ✅
+findByPseudoOrEmail(query) ✅
+delete(id) ✅
+
+Implémenté dans `apps/api/src/users/` :
+- `users.controller.ts` — 5 endpoints (GET/PATCH/POST/GET/DELETE)
+- `users.service.ts` — 5 méthodes + sélecteur de champs publics partagé (USER_PUBLIC_SELECT)
+- `dto/upload-avatar.dto.ts` — DTO pour la réponse d'upload
+- `users.service.spec.ts` — 10 tests unitaires (tous passants)
+- `prisma.service.ts` — exposé le client Prisma complet (`this.prisma`) en plus des delegates model
+- `tsconfig.json` — ajout de `"multer"` dans les types
+- `auth.service.ts` — export de l'interface `AuthResponse` (correction d'erreur TS4053 pré-existante)
+
 3.3 Module titles (le plus gros morceau)
  GET /titles/search?q=&type=film|serie — appelle tmdb-client.searchMovie/searchTv et recherche locale (titre_vo/titre_vf ILIKE), fusionne les résultats en marquant ceux déjà présents localement via tmdb_id
  GET /titles/tmdb/:tmdbId — "get or import" : cherche par tmdb_id, sinon déclenche tmdb-sync.importTitleByTmdbId(tmdbId, type) (Phase 2.3) de façon synchrone ou via job BullMQ selon la latence acceptable
