@@ -186,25 +186,16 @@ Découpage en 4 sous-phases indépendantes (ordre recommandé par dépendances c
 ### 4.1 Module `watches` — user_watches + user_follows_serie + calendrier
   *Dépend de :* auth, titles, seasons-episodes (Phase 3)
   *Fonctions PL/pgSQL utilisées :* `fn_progress_serie`, `fn_episodes_non_vus` (appel via `$queryRaw`)
+  *Note :* `user_follows_serie` (suivi de séries) inclus dans ce module plutôt qu'en sous-phase séparée, car le calendrier et la progression en dépendent directement.
 
-- [ ] `POST /watches` — CreateWatchDto { title_id?, episode_id?, date_vue? } — marquer un titre/épisode comme vu
-  - Validation : soit title_id, soit episode_id (pas les deux, pas aucun)
-  - Si episode_id fourni, résoudre le title_id depuis l'épisode (via seasons)
-  - Si date_vue non fournie, utiliser date du jour
-  - upsert implicite ? Non : un watch par couple user+title ou user+episode est logique (on ne regarde qu'une fois un épisode), mais le schéma n'a pas de contrainte UNIQUE sur user_watches → permettre plusieurs entrées (re-watch)
-- [ ] `DELETE /watches/:id` — supprimer une entrée de visionnage
-- [ ] `GET /watches` — liste des visionnages de l'utilisateur connecté, avec pagination et filtres (type: film|serie, date_from, date_to, title_id optionnel)
-- [ ] `GET /titles/:titleId/progress` — progression pour l'utilisateur connecté (appelle `fn_progress_serie(user_id, title_id)` via `$queryRaw`), retourne { saison, vus, total }[] pour un titre de type serie
-- [ ] `GET /calendar` — calendrier des épisodes non vus (appelle `fn_episodes_non_vus` pour chaque série suivie), trié par nombre d'épisodes non vus décroissant
-  - Retourne : [{ title_id, titre_vo, titre_vf, affiche_url, saison, episode_numero, episode_titre, date_diffusion, nb_non_vus }]
-
-Fonctions WatchesService :
-
-createWatch(userId, dto) — upsert-watch
-deleteWatch(id, userId) — vérifie appartenance
-listWatches(userId, filters, pagination) — avec jointure titles/episodes
-getSerieProgress(userId, titleId) — délègue à packages/db getSerieProgress (fn_progress_serie)
-getCalendar(userId) — délègue à packages/db countEpisodesNonVus (fn_episodes_non_vus)
+- [ ] `POST /watches` — CreateWatchDto { title_id?, episode_id?, date_vue? } — marquer vu
+- [ ] `DELETE /watches/:id` — supprimer un watch
+- [ ] `GET /watches` — liste paginée+filtres (type, date_from, date_to, title_id)
+- [ ] `GET /titles/:titleId/progress` — progression série (fn_progress_serie)
+- [ ] `GET /calendar` — calendrier épisodes non vus (fn_episodes_non_vus)
+- [ ] `POST /follows` — FollowSerieDto { title_id } — suivre une série
+- [ ] `DELETE /follows/:titleId` — ne plus suivre
+- [ ] `GET /follows` — liste des séries suivies
 
 ### 4.2 Module `ratings` — user_ratings
   *Dépend de :* auth, titles
