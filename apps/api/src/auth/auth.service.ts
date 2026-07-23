@@ -21,7 +21,10 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async validateUserCredentials(email: string, password: string): Promise<AuthenticatedUser | null> {
+  async validateUserCredentials(
+    email: string,
+    password: string,
+  ): Promise<AuthenticatedUser | null> {
     const user = await this.prisma.users.findUnique({ where: { email } });
     if (!user) {
       return null;
@@ -73,7 +76,11 @@ export class AuthService {
 
   async refreshTokens(refreshToken: string): Promise<AuthResponse> {
     try {
-      const payload = await this.jwtService.verifyAsync<{ sub: string; email: string; pseudo: string }>(refreshToken, {
+      const payload = await this.jwtService.verifyAsync<{
+        sub: string;
+        email: string;
+        pseudo: string;
+      }>(refreshToken, {
         secret: this.getRefreshTokenSecret(),
       });
 

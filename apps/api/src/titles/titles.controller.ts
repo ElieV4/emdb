@@ -25,10 +25,7 @@ export class TitlesController {
   }
 
   @Get('tmdb/:tmdbId')
-  async getOrImport(
-    @Param('tmdbId') tmdbId: string,
-    @Query('type') type: 'film' | 'serie',
-  ) {
+  async getOrImport(@Param('tmdbId') tmdbId: string, @Query('type') type: 'film' | 'serie') {
     const id = parseInt(tmdbId, 10);
     if (isNaN(id) || id < 1) {
       throw new NotFoundException('ID TMDB invalide.');

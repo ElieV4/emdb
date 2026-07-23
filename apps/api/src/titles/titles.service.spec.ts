@@ -17,10 +17,7 @@ jest.mock('@emdb/tmdb-sync', () => ({
   refreshTitleData: jest.fn(),
 }));
 
-import {
-  getMovieRecommendations,
-  getMovieSimilar,
-} from '@emdb/tmdb-client';
+import { getMovieRecommendations, getMovieSimilar } from '@emdb/tmdb-client';
 import { importTitleByTmdbId, refreshTitleData } from '@emdb/tmdb-sync';
 
 const prismaServiceMock = {
@@ -43,10 +40,7 @@ describe('TitlesService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        TitlesService,
-        { provide: PrismaService, useValue: prismaServiceMock },
-      ],
+      providers: [TitlesService, { provide: PrismaService, useValue: prismaServiceMock }],
     }).compile();
 
     service = module.get<TitlesService>(TitlesService);
@@ -158,7 +152,9 @@ describe('TitlesService', () => {
       const mockTitle = { id: '1', tmdb_id: 123, type: 'film' };
       prismaServiceMock.titles.findUnique.mockResolvedValue(mockTitle);
       prismaServiceMock.title_recommendations.findMany.mockResolvedValue([]);
-      (getMovieRecommendations as jest.Mock).mockResolvedValue({ results: [{ id: 999, title: 'TMDB Rec' }] });
+      (getMovieRecommendations as jest.Mock).mockResolvedValue({
+        results: [{ id: 999, title: 'TMDB Rec' }],
+      });
       (getMovieSimilar as jest.Mock).mockResolvedValue({ results: [] });
       prismaServiceMock.titles.findUnique.mockResolvedValueOnce(mockTitle);
       prismaServiceMock.titles.findUnique.mockResolvedValueOnce(null);

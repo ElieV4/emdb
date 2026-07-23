@@ -5,6 +5,9 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { TitlesModule } from './titles/titles.module';
+import { PeopleModule } from './people/people.module';
+import { SeasonsEpisodesModule } from './seasons-episodes/seasons-episodes.module';
+import { CreditsModule } from './credits/credits.module';
 
 @Module({
   imports: [
@@ -15,6 +18,9 @@ import { TitlesModule } from './titles/titles.module';
     AuthModule,
     UsersModule,
     TitlesModule,
+    PeopleModule,
+    SeasonsEpisodesModule,
+    CreditsModule,
   ],
   controllers: [AppController],
 })

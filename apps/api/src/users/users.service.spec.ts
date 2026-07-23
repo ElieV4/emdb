@@ -63,7 +63,11 @@ describe('UsersService', () => {
 
   describe('updateProfile', () => {
     it('met à jour le pseudo et l’avatar_url', async () => {
-      const updatedUser = { ...mockUser, pseudo: 'newpseudo', avatar_url: 'https://example.com/avatar.png' };
+      const updatedUser = {
+        ...mockUser,
+        pseudo: 'newpseudo',
+        avatar_url: 'https://example.com/avatar.png',
+      };
       prismaServiceMock.users.update.mockResolvedValue(updatedUser);
 
       const result = await service.updateProfile('user-id', {
@@ -156,9 +160,7 @@ describe('UsersService', () => {
     });
 
     it('propage l’erreur si l’utilisateur n’existe pas', async () => {
-      prismaServiceMock.users.delete.mockRejectedValue(
-        new Error('No user found'),
-      );
+      prismaServiceMock.users.delete.mockRejectedValue(new Error('No user found'));
 
       await expect(service.delete('nonexistent')).rejects.toThrow('No user found');
     });

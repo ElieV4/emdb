@@ -29,6 +29,7 @@ export class PrismaService implements OnModuleDestroy {
   seasons = prisma.seasons;
   episodes = prisma.episodes;
   people = prisma.people;
+  person_recommendations = prisma.person_recommendations;
   genres = prisma.genres;
   countries = prisma.countries;
   studios = prisma.studios;

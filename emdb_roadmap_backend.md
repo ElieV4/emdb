@@ -167,12 +167,12 @@ getWatchCountByAnimation(userId)
 
 *(moins prioritaire à détailler ici selon ta demande, je reste au niveau module — dis-moi si tu veux que je descende aussi à la maille fonction sur cette phase)*
 
-- [ ] Module `auth` : register, login (JWT access+refresh), hash bcrypt, guards NestJS
+- [x] Module `auth` : register, login (JWT access+refresh), hash bcrypt, guards NestJS
 - [x] Module `users` : profil, avatar
-- [ ] Module `titles` : recherche (proxy TMDB + résultats déjà en local mergés), détail titre, déclenchement d'import si absent de la base
-- [ ] Module `people` : détail personne + filmographie (via `credits`)
-- [ ] Module `seasons-episodes` : lecture, vue par saison
-- [ ] Module `credits` : exposé en sous-ressource de `titles`
+- [x] Module `titles` : recherche (proxy TMDB + résultats déjà en local mergés), détail titre, déclenchement d'import si absent de la base
+- [x] Module `people` : détail personne + filmographie (via `credits`)
+- [x] Module `seasons-episodes` : lecture, vue par saison
+- [x] Module `credits` : exposé en sous-ressource de `titles`
 
 ---
 Convention : chaque module NestJS = module / controller / service / dto, connecté à @emdb/db (Prisma) et, quand nécessaire, à tmdb-client / tmdb-sync (Phase 2).
@@ -275,49 +275,70 @@ Implémenté dans `apps/api/src/titles/` :
 - `packages/tmdb-mapper/tsconfig.json` — exclusion des spec files du build
 
 3.4 Module people
- GET /people/search?q= — proxy tmdb-client.searchPerson + fusion locale
- GET /people/tmdb/:tmdbId — get or import (appelle tmdb-sync.importPersonByTmdbId, Phase 2)
- GET /people/:id — détail (bio, photo, wiki_url, pays, date de naissance, genre)
- GET /people/:id/filmography — jointure credits → titles, groupée par rôle, triée par date_sortie
- GET /people/:id/recommendations — lit person_recommendations
- PATCH /people/:id/refresh — force tmdb-sync.refreshPersonData(id)
+- [x] GET /people/search?q= — proxy tmdb-client.searchPerson + fusion locale
+- [x] GET /people/tmdb/:tmdbId — get or import (appelle tmdb-sync.importPersonByTmdbId, Phase 2)
+- [x] GET /people/:id — détail (bio, photo, wiki_url, pays, date de naissance, genre)
+- [x] GET /people/:id/filmography — jointure credits → titles, groupée par rôle, triée par date_sortie
+- [x] GET /people/:id/recommendations — lit person_recommendations
+- [x] PATCH /people/:id/refresh — force tmdb-sync.refreshPersonData(id)
 
 Fonctions PeopleService :
 
-search(query)
-getOrImportByTmdbId(tmdbId)
-getById(id)
-getFilmography(id)
-getRecommendations(id)
-refresh(id)
+search(query) ✅
+getOrImportByTmdbId(tmdbId) ✅
+getById(id) ✅
+getFilmography(id) ✅
+getRecommendations(id) ✅
+refresh(id) ✅
+
+Implémenté dans `apps/api/src/people/` :
+- `people.controller.ts` — 6 endpoints (search, getOrImport, getById, getFilmography, getRecommendations, refresh)
+- `people.service.ts` — 6 méthodes + interface PersonSearchResult
+- `people.module.ts` — module NestJS avec PrismaModule
+- `dto/search-people.dto.ts` — DTO validation pour ?q=
+- `people.service.spec.ts` — 17 tests unitaires (tous passants)
+- `prisma.service.ts` — ajout du delegate person_recommendations
+- `app.module.ts` — enregistrement de PeopleModule
 
 3.5 Module seasons-episodes
- GET /titles/:titleId/seasons — liste des saisons
- GET /titles/:titleId/seasons/:numero — détail saison + liste des épisodes
- GET /episodes/:id — détail épisode (synopsis, date_sortie, image_url, durée)
- GET /episodes/:id/credits — guest stars/crew spécifiques à l'épisode (credits.episode_id) — dépend de la fonction TMDB getTvEpisodeDetails + mapTmdbEpisodeCredits évoquées en Phase 2
+- [x] GET /titles/:titleId/seasons — liste des saisons (avec nombre d'épisodes)
+- [x] GET /titles/:titleId/seasons/:numero — détail saison + liste des épisodes
+- [x] GET /episodes/:id — détail épisode (synopsis, date_sortie, image_url, durée) avec saison parente
+- [x] GET /episodes/:id/credits — guest stars/crew spécifiques à l'épisode (credits.episode_id), groupés par rôle
 
-⚠️ Ces deux endpoints sont user-agnostic (pure lecture du catalogue). Les endpoints qui dépendent d'un utilisateur — fn_progress_serie (vue datée par saison) et fn_episodes_non_vus (calendrier) — sont logiquement de la Phase 4 ("features utilisateur") même si on pourrait les exposer ici en GET /titles/:titleId/progress. À toi de voir si tu préfères les garder groupés avec seasons-episodes pour la cohérence de route, ou strictement dans un futur module watches.
+⚠️ Ces endpoints sont user-agnostic (pure lecture du catalogue). Les endpoints utilisateur (fn_progress_serie, fn_episodes_non_vus) sont en Phase 4.
 
 Fonctions SeasonsEpisodesService :
 
-listSeasons(titleId)
-getSeason(titleId, numero)
-getEpisode(episodeId)
-getEpisodeCredits(episodeId)
+listSeasons(titleId) ✅
+getSeason(titleId, numero) ✅
+getEpisode(episodeId) ✅
+getEpisodeCredits(episodeId) ✅
+
+Implémenté dans `apps/api/src/seasons-episodes/` :
+- `seasons-episodes.controller.ts` — 4 endpoints publics (routes plates `titles/:titleId/seasons` et `episodes/:id`)
+- `seasons-episodes.service.ts` — 4 méthodes avec PrismaService
+- `seasons-episodes.module.ts` — module NestJS avec PrismaModule
+- `seasons-episodes.service.spec.ts` — 11 tests unitaires (tous passants)
+- `app.module.ts` — enregistrement de SeasonsEpisodesModule
 
 3.6 Module credits
- GET /titles/:titleId/credits — groupé cast (role=acteur, trié par ordre) / crew (réalisateur, scénariste...) — utilise la table roles (v3) plutôt que l'ancien CHECK figé
- GET /episodes/:episodeId/credits — credits spécifiques épisode
- GET /people/:personId/credits — vue "reverse" (alias de getFilmography, à voir si on factorise dans un seul endroit pour éviter la duplication avec PeopleService)
+- [x] GET /titles/:titleId/credits — groupé cast (role=acteur, trié par ordre) / crew (réalisateur, scénariste...) — utilise la table roles
+- [x] GET /episodes/:episodeId/credits — credits spécifiques épisode (délégué à SeasonsEpisodesService, Phase 3.5)
+- [x] GET /people/:personId/credits — alias vers getFilmography (PeopleService, Phase 3.4)
 
 Fonctions CreditsService :
 
-getTitleCredits(titleId)
-getEpisodeCredits(episodeId)
-getPersonCredits(personId)
+getTitleCredits(titleId) ✅ — credits sans episode_id, groupés par rôle
+(les autres fonctions sont déléguées aux services existants)
 
-Pas d'endpoint public nécessaire pour roles (référentiel interne utilisé uniquement au mapping TMDB → base, pas consommé par le frontend).
+Implémenté dans `apps/api/src/credits/` :
+- `credits.controller.ts` — 1 endpoint public `GET /titles/:titleId/credits`
+- `credits.service.ts` — 1 méthode `getTitleCredits`
+- `credits.module.ts` — module NestJS avec PrismaModule
+- `credits.service.spec.ts` — 3 tests unitaires (tous passants)
+- `app.module.ts` — enregistrement de CreditsModule
+- `people.controller.ts` — ajout alias `GET /people/:id/credits` → `getFilmography()`
 
 
 ## Phase 4 — Fonctionnalités utilisateur

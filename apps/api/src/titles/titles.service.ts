@@ -63,18 +63,12 @@ export class TitlesService {
 
     if (type === 'film' || !type) {
       const movieResults = await searchMovie(query);
-      tmdbResults = [
-        ...tmdbResults,
-        ...movieResults.map((r) => ({ ...r, type: 'film' as const })),
-      ];
+      tmdbResults = [...tmdbResults, ...movieResults.map((r) => ({ ...r, type: 'film' as const }))];
     }
 
     if (type === 'serie' || !type) {
       const tvResults = await searchTv(query);
-      tmdbResults = [
-        ...tmdbResults,
-        ...tvResults.map((r) => ({ ...r, type: 'serie' as const })),
-      ];
+      tmdbResults = [...tmdbResults, ...tvResults.map((r) => ({ ...r, type: 'serie' as const }))];
     }
 
     // 2. Recherche locale (ILIKE sur titre_vo / titre_vf)
@@ -379,9 +373,7 @@ export class TitlesService {
           tmdb_id: rec.id,
           titre_vo: rec.title ?? rec.name ?? null,
           titre_vf: rec.title ?? rec.name ?? null,
-          affiche_url: rec.poster_path
-            ? `https://image.tmdb.org/t/p/w500${rec.poster_path}`
-            : null,
+          affiche_url: rec.poster_path ? `https://image.tmdb.org/t/p/w500${rec.poster_path}` : null,
           type: title.type,
           note_imdb: rec.vote_average ?? null,
         });
@@ -411,7 +403,7 @@ export class TitlesService {
     }
 
     if (!title.tmdb_id) {
-      throw new BadRequestException('Le titre n\'a pas de tmdb_id, impossible de rafraîchir.');
+      throw new BadRequestException("Le titre n'a pas de tmdb_id, impossible de rafraîchir.");
     }
 
     return refreshTitleData(id);
