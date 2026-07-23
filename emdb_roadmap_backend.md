@@ -367,9 +367,60 @@ Découpage en 3 sous-phases :
 
 ## Phase 6 — Dataviz (lecture des vues matérialisées de la Phase 1.4)
 
-- [ ] Endpoints `GET /dataviz/watch-time?groupBy=genre|period|country|animation|note`
-- [ ] Endpoints `GET /dataviz/watch-count?groupBy=...`
-- [ ] Toute la logique lourde est déjà dans les `mv_*` — l'API ne fait que filtrer/formater
+La Phase 6 expose les 8 vues matérialisées de la Phase 1.4 via une API REST.
+Toute la logique lourde est déjà dans les `mv_*` — l'API ne fait que filtrer/formater.
+
+Découpage en 2 sous-phases :
+
+### 6.1 Module API `dataviz` — endpoints NestJS
+*Dépend de :* Phase 1.4 (vues matérialisées + wrappers dans `packages/db/src/functions.ts`), auth (JWT)
+
+- [ ] `GET /dataviz/watch-time?groupBy=genre|period|country|animation&yearFrom=&yearTo=`
+  - Auth : JWT requis (données personnelles)
+  - Paramètre `groupBy` required (enum)
+  - Paramètres optionnels `yearFrom`/`yearTo` (integer, 1900-2100)
+  - Vues `period` : filtre SQL `EXTRACT(YEAR FROM periode_semaine) BETWEEN yearFrom AND yearTo`
+  - Vues `genre`/`country`/`animation` : sous-requête `EXISTS` sur `user_watches` filtrée par année
+  - Tri par période/critère
+
+- [ ] `GET /dataviz/watch-count?groupBy=genre|period|country|animation&yearFrom=&yearTo=`
+  - Même logique que watch-time, mais lit les vues `mv_watch_count_*`
+
+- **Structure :**
+  ```
+  apps/api/src/dataviz/
+  ├── dataviz.module.ts
+  ├── dataviz.controller.ts
+  ├── dataviz.service.ts
+  ├── dto/
+  │   ├── watch-time-query.dto.ts
+  │   └── watch-count-query.dto.ts
+  └── dataviz.service.spec.ts
+  ```
+
+- **Fonctions `DatavizService` :**
+  - `getWatchTime(userId, query)` — dispatche selon `groupBy` vers la MV correspondante
+  - `getWatchCount(userId, query)` — idem pour les vues count
+  - Toute la logique SQL utilise `prisma.$queryRawUnsafe` (les MV ne sont pas dans Prisma)
+
+### 6.2 Endpoint admin + refresh BullMQ
+*Dépend de :* Phase 6.1 (module API), Phase 2.4 (BullMQ), Phase 1.4 (refresh script)
+
+- [ ] `POST /admin/refresh-materialized-views` — déclenchement manuel du refresh
+  - Auth : JWT + admin (email fixe dans `ADMIN_EMAILS` via `.env`)
+  - Exécution via BullMQ (queue `dataviz`, job `refresh-materialized-views`)
+  - Concurrency : 1 (évite les conflits de refresh concurrent)
+  - Timeout : 5 minutes
+  - Retour : `{ jobId, status: 'queued' }`
+
+- [ ] Cron nocturne (BullMQ) : job planifié chaque nuit à 3h
+  - Utilise le même worker que le déclenchement manuel
+  - Log en cas d'échec
+
+- [ ] Worker `apps/worker/src/dataviz.worker.ts` :
+  - Boucle sur les 8 vues matérialisées
+  - `REFRESH MATERIALIZED VIEW CONCURRENTLY` pour chacune
+  - Log : succès/échec par vue + durée totale
 
 ---
 

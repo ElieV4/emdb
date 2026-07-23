@@ -39,6 +39,30 @@ export class PrismaService implements OnModuleDestroy {
   user_follows_serie = prisma.user_follows_serie;
   notifications = prisma.notifications;
 
+  /**
+   * Exécute une requête SQL brute via Prisma.
+   * Utile pour les appels aux vues matérialisées, fonctions PL/pgSQL,
+   * et tout ce qui n'est pas modélisé dans le schéma Prisma.
+   *
+   * @param sql - Requête SQL avec paramètres
+   * @param params - Paramètres optionnels (préparés)
+   * @returns Résultat de la requête
+   */
+  async $queryRawUnsafe<T = any>(sql: string, ...params: any[]): Promise<T> {
+    return prisma.$queryRawUnsafe<T>(sql, ...params);
+  }
+
+  /**
+   * Exécute une commande SQL brute (INSERT/UPDATE/DELETE) via Prisma.
+   *
+   * @param sql - Requête SQL avec paramètres
+   * @param params - Paramètres optionnels
+   * @returns Nombre de lignes affectées
+   */
+  async $executeRawUnsafe(sql: string, ...params: any[]): Promise<number> {
+    return prisma.$executeRawUnsafe(sql, ...params);
+  }
+
   onModuleDestroy() {
     return prisma.$disconnect();
   }

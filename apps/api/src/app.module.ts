@@ -8,6 +8,7 @@ import { TitlesModule } from './titles/titles.module';
 import { PeopleModule } from './people/people.module';
 import { SeasonsEpisodesModule } from './seasons-episodes/seasons-episodes.module';
 import { CreditsModule } from './credits/credits.module';
+import { DatavizModule } from './dataviz/dataviz.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { CreditsModule } from './credits/credits.module';
     PeopleModule,
     SeasonsEpisodesModule,
     CreditsModule,
+    DatavizModule,
   ],
   controllers: [AppController],
 })
