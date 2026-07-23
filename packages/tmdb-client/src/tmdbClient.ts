@@ -114,6 +114,24 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function parseRetryAfter(retryAfter: string | null): number | null {
+  if (!retryAfter) {
+    return null;
+  }
+
+  const seconds = Number(retryAfter);
+  if (!Number.isNaN(seconds)) {
+    return seconds * 1000;
+  }
+
+  const parsedDate = Date.parse(retryAfter);
+  if (!Number.isNaN(parsedDate)) {
+    return Math.max(parsedDate - Date.now(), 0);
+  }
+
+  return null;
+}
+
 class RateLimiter {
   private tokens: number;
   private lastRefill: number;
@@ -190,20 +208,22 @@ async function fetchJson<T>(url: string): Promise<T> {
       return body;
     }
 
+    if (response.status === 401) {
+      throw new Error(`TMDB unauthorized 401: Invalid API key or token for ${url}`);
+    }
+
     if (response.status === 404) {
       throw new Error(`TMDB request failed 404: Not Found for ${url}`);
     }
 
     if (response.status === 429 || response.status >= 500) {
-      const retryAfter = response.headers.get('Retry-After');
-      const delayMs = retryAfter
-        ? Number(retryAfter) * 1000
-        : TMDB_RETRY_BASE_DELAY_MS * attempt;
+      const retryAfterHeader = response.headers.get('Retry-After');
+      const retryDelay = parseRetryAfter(retryAfterHeader) ?? TMDB_RETRY_BASE_DELAY_MS * attempt;
       lastError = new Error(`TMDB request failed ${response.status}: ${response.statusText}`);
       if (attempt >= TMDB_MAX_RETRIES) {
         break;
       }
-      await sleep(delayMs);
+      await sleep(retryDelay);
       continue;
     }
 
