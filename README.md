@@ -4,6 +4,8 @@ application movie / serie tracker avec des pages en arborescence pour les infos 
 multi utilisateur
 app crossplatform
 
+Lire le contenu du dossier ./docs pour comprendre le dépôt
+
 ## Stack 
 ---
 
