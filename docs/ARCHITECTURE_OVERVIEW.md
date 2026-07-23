@@ -377,13 +377,15 @@ emdb/
 - Liste des visionnages (filtres par type, date, titre)
 - Progression série (`fn_progress_serie` via Prisma `$queryRaw`)
 - Calendrier épisodes non vus (`fn_episodes_non_vus` via `$queryRaw`)
-- Suivi de séries (abonnements)
+- **Suivi de séries (abonnements)** - Phase 4.4 intégrée ici
 
 **Dépendances** :
 - `@emdb/db` (Prisma UserWatch, UserFollowsSerie)
 - Fonctions PL/pgSQL : `fn_progress_serie`, `fn_episodes_non_vus`
 - Module `auth` (JwtAuthGuard)
 - Module `titles` (validation type série)
+
+**Note** : Le module Follows (Phase 4.4) est intégré dans Watches pour éviter la duplication et exploiter le couplage naturel avec le calendrier et la progression.
 
 ---
 

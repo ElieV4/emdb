@@ -31,6 +31,7 @@
 - [👀 Phase 4.1: Watches Context](./phase-4.1-watches-context.md) - Visionnage, suivi séries, calendrier
 - [⭐ Phase 4.2: Ratings Context](./phase-4.2-ratings-context.md) - Notation utilisateur
 - [📋 Phase 4.3: Lists Context](./phase-4.3-lists-context.md) - Listes personnalisées et partage
+- [🔔 Phase 4.4: Follows Context](./phase-4.4-follows-context.md) - Suivi de séries (intégré dans Watches)
 
 #### Phase 5 - Recommandations
 - [🤖 Phase 5.1: Recommender Context](./phase-5.1-recommender-context.md) - Algorithme de similarité

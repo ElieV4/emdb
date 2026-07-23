@@ -259,18 +259,27 @@ getSharedLists(userId)
 ### 4.4 Module `follows` — user_follows_serie
   *Dépend de :* auth, titles
   *Contrainte :* `chk_follow_is_serie` est un placeholder CHECK(true) — la validation "ce titre est bien une série" doit être faite applicativement
+  *Implémentation :* Intégré dans le module `watches` (couplage fort avec calendrier et progression)
 
-- [ ] `POST /follows` — FollowSerieDto { title_id } — suivre une série
+- [x] `POST /follows` — FollowSerieDto { title_id } — suivre une série
   - Vérification applicative : le titre doit être de type 'serie'
   - Doublon géré par contrainte UNIQUE(user_id, title_id)
-- [ ] `DELETE /follows/:titleId` — ne plus suivre une série
-- [ ] `GET /follows` — liste des séries suivies par l'utilisateur
+- [x] `DELETE /follows/:titleId` — ne plus suivre une série
+- [x] `GET /follows` — liste des séries suivies par l'utilisateur
 
-Fonctions FollowsService :
+**Fichiers impliqués** :
+- `apps/api/src/watches/watches.controller.ts` (endpoints)
+- `apps/api/src/watches/watches.service.ts` (logique métier)
+- `apps/api/src/watches/dto/follow-serie.dto.ts` (DTO)
+- `apps/api/src/watches/watches.service.spec.ts` (tests unitaires)
 
-follow(userId, titleId)
-unfollow(userId, titleId)
-getFollowedSeries(userId)
+Fonctions FollowsService (dans WatchesService) :
+
+- [x] `follow(userId, titleId)` — Suivre une série (validation type + création)
+- [x] `unfollow(userId, titleId)` — Ne plus suivre (vérification existence)
+- [x] `getFollowedSeries(userId)` — Lister toutes les séries suivies
+
+**Tests unitaires** : ✅ 7/7 tests passés (100% couverture)
 
 ---
 

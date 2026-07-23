@@ -516,6 +516,7 @@ wikidata-client/
   - Get calendrier épisodes non vus (appel `fn_episodes_non_vus`)
   - Follow/unfollow série
   - List séries suivies
+- **Note** : Le module Watches intègre également la fonctionnalité Follows (Phase 4.4) pour le suivi de séries, avec les endpoints dédiés et DTOs spécifiques (`follow-serie.dto.ts`)
 - **Mocks utilisés** : `PrismaService` (avec `$queryRaw` mocké)
 - **Couverture** : ~92%
 
