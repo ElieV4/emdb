@@ -175,6 +175,127 @@ getWatchCountByAnimation(userId)
 - [ ] Module `credits` : exposé en sous-ressource de `titles`
 
 ---
+Convention : chaque module NestJS = module / controller / service / dto, connecté à @emdb/db (Prisma) et, quand nécessaire, à tmdb-client / tmdb-sync (Phase 2).
+
+3.0 Socle transverse (préalable à tous les modules)
+ Dépendances manquantes dans apps/api/package.json (actuellement absentes) :
+class-validator, class-transformer (DTO validation — indispensable, rien n'est prévu actuellement)
+@nestjs/jwt, @nestjs/passport, passport, passport-jwt (auth)
+bcrypt (hash mot de passe — password_hash existe déjà dans le schéma mais rien ne l'écrit)
+@nestjs/throttler (rate limiting sur les endpoints qui proxient TMDB, pour éviter de cramer le quota API)
+ main.ts : ajouter app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
+ main.ts : configurer Swagger (@nestjs/swagger est déjà une dépendance mais inutilisée — DocumentBuilder + SwaggerModule.setup('/docs', app, document))
+ PrismaModule : wrapper NestJS autour du singleton prisma exporté par @emdb/db, pour l'injecter proprement (@Injectable() PrismaService extends PrismaClient ou provider { provide: 'PRISMA', useValue: prisma }) plutôt que d'importer le singleton partout — facilite les tests avec mocks
+ Filtre d'exception global (AllExceptionsFilter) pour formater les erreurs Prisma (P2002, P2025...) en réponses HTTP cohérentes (409, 404...)
+ DTOs communs : PaginationDto { page, limit }, PaginatedResult<T> { data, total, page, limit }
+3.1 Module auth
+
+⚠️ Gap de schéma à trancher avant de coder : le schéma n'a aucune table pour stocker/révoquer les refresh tokens (pas de refresh_tokens, pas de blacklist). Deux options :
+
+(a) refresh token stateless (JWT signé, expiration courte type 30j, pas de révocation possible avant expiration) — plus simple, cohérent avec l'app à 2 utilisateurs
+(b) ajouter une table refresh_tokens (user_id, token_hash, expires_at, revoked_at) dans db_init.sql — permet logout réel et révocation
+
+Je recommande (a) pour rester simple vu l'échelle du projet, sauf si tu veux un vrai logout serveur.
+
+ POST /auth/register — RegisterDto { email, password, pseudo } → hash bcrypt, users.create, retourne { user, accessToken, refreshToken }
+ POST /auth/login — LoginDto { email, password } → vérifie hash, retourne les mêmes tokens
+ POST /auth/refresh — RefreshDto { refreshToken } → vérifie signature/expiration, émet un nouvel access token
+ POST /auth/logout — invalide côté client uniquement si option (a) ; si (b), révoque en base
+ GET /auth/me — retourne l'utilisateur courant depuis le JWT
+
+Fonctions AuthService :
+
+register(dto): Promise<{ user, accessToken, refreshToken }>
+validateUser(email, password): Promise<User | null>
+login(user): Promise<{ accessToken, refreshToken }>
+refresh(refreshToken): Promise<{ accessToken }>
+logout(userId): Promise<void>
+ JwtStrategy.validate(payload) → charge l'utilisateur depuis payload.sub
+ JwtAuthGuard (Passport) appliqué globalement, sauf /auth/register, /auth/login, /auth/refresh, /health
+ Décorateur @CurrentUser() pour extraire req.user dans les controllers
+ PasswordService.hash(plain) / PasswordService.compare(plain, hash)
+3.2 Module users
+ GET /users/me — profil complet (email, pseudo, avatar_url, created_at)
+ PATCH /users/me — UpdateProfileDto { pseudo?, avatar_url? }
+ POST /users/me/avatar — upload via multer (déjà dépendance de @nestjs/platform-express), stockage à définir (Supabase Storage a été explicitement écarté pour les images de titres/personnes — à clarifier si ça s'applique aussi aux avatars utilisateurs, ou si on autorise une exception ici vu le faible volume)
+ GET /users/search?query= — recherche par pseudo/email, nécessaire pour list_shares : il faut bien un moyen de trouver l'autre utilisateur (toi + la 2ᵉ personne) pour partager une liste
+ DELETE /users/me — suppression de compte (cascade déjà géré par les FK ON DELETE CASCADE)
+
+Fonctions UsersService :
+
+getById(id)
+updateProfile(id, dto)
+updateAvatar(id, url)
+findByPseudoOrEmail(query)
+delete(id)
+3.3 Module titles (le plus gros morceau)
+ GET /titles/search?q=&type=film|serie — appelle tmdb-client.searchMovie/searchTv et recherche locale (titre_vo/titre_vf ILIKE), fusionne les résultats en marquant ceux déjà présents localement via tmdb_id
+ GET /titles/tmdb/:tmdbId — "get or import" : cherche par tmdb_id, sinon déclenche tmdb-sync.importTitleByTmdbId(tmdbId, type) (Phase 2.3) de façon synchrone ou via job BullMQ selon la latence acceptable
+ GET /titles/:id — détail complet : titre + genres (title_genres) + pays (title_countries) + studios (title_studios) + saisons si série
+ GET /titles — liste/parcours paginé avec filtres : type, genre_id, country_id, is_animation, note_imdb_min, tri par date_sortie/note_imdb (les index idx_titles_date_sortie et idx_titles_note_imdb existent déjà justement pour ça)
+ GET /titles/:id/credits — cast/crew groupés par rôle (délègue à CreditsService)
+ GET /titles/:id/seasons — pour les séries (délègue à SeasonsEpisodesService)
+ GET /titles/:id/recommendations — lit title_recommendations ; si vide, fallback sur getMovieRecommendations/getMovieSimilar TMDB (cf. bootstrapRecommendationsFromTmdb proposé côté Phase 2)
+ PATCH /titles/:id/refresh — force tmdb-sync.refreshTitleData(id)
+ DELETE /titles/:id — suppression uniquement si orphelin (aucune user_ratings/user_watches/list_items ne le référence) — cohérent avec le principe de "lazy persistence"
+
+Fonctions TitlesService :
+
+searchTitles(query, type?)
+getOrImportByTmdbId(tmdbId, type)
+getTitleDetail(id)
+listTitles(filters, pagination)
+getRecommendations(id)
+refreshTitle(id)
+deleteIfOrphan(id)
+
+DTOs : SearchTitlesDto, ListTitlesFilterDto, ImportTitleDto
+
+3.4 Module people
+ GET /people/search?q= — proxy tmdb-client.searchPerson + fusion locale
+ GET /people/tmdb/:tmdbId — get or import (appelle tmdb-sync.importPersonByTmdbId, Phase 2)
+ GET /people/:id — détail (bio, photo, wiki_url, pays, date de naissance, genre)
+ GET /people/:id/filmography — jointure credits → titles, groupée par rôle, triée par date_sortie
+ GET /people/:id/recommendations — lit person_recommendations
+ PATCH /people/:id/refresh — force tmdb-sync.refreshPersonData(id)
+
+Fonctions PeopleService :
+
+search(query)
+getOrImportByTmdbId(tmdbId)
+getById(id)
+getFilmography(id)
+getRecommendations(id)
+refresh(id)
+
+3.5 Module seasons-episodes
+ GET /titles/:titleId/seasons — liste des saisons
+ GET /titles/:titleId/seasons/:numero — détail saison + liste des épisodes
+ GET /episodes/:id — détail épisode (synopsis, date_sortie, image_url, durée)
+ GET /episodes/:id/credits — guest stars/crew spécifiques à l'épisode (credits.episode_id) — dépend de la fonction TMDB getTvEpisodeDetails + mapTmdbEpisodeCredits évoquées en Phase 2
+
+⚠️ Ces deux endpoints sont user-agnostic (pure lecture du catalogue). Les endpoints qui dépendent d'un utilisateur — fn_progress_serie (vue datée par saison) et fn_episodes_non_vus (calendrier) — sont logiquement de la Phase 4 ("features utilisateur") même si on pourrait les exposer ici en GET /titles/:titleId/progress. À toi de voir si tu préfères les garder groupés avec seasons-episodes pour la cohérence de route, ou strictement dans un futur module watches.
+
+Fonctions SeasonsEpisodesService :
+
+listSeasons(titleId)
+getSeason(titleId, numero)
+getEpisode(episodeId)
+getEpisodeCredits(episodeId)
+
+3.6 Module credits
+ GET /titles/:titleId/credits — groupé cast (role=acteur, trié par ordre) / crew (réalisateur, scénariste...) — utilise la table roles (v3) plutôt que l'ancien CHECK figé
+ GET /episodes/:episodeId/credits — credits spécifiques épisode
+ GET /people/:personId/credits — vue "reverse" (alias de getFilmography, à voir si on factorise dans un seul endroit pour éviter la duplication avec PeopleService)
+
+Fonctions CreditsService :
+
+getTitleCredits(titleId)
+getEpisodeCredits(episodeId)
+getPersonCredits(personId)
+
+Pas d'endpoint public nécessaire pour roles (référentiel interne utilisé uniquement au mapping TMDB → base, pas consommé par le frontend).
+
 
 ## Phase 4 — Fonctionnalités utilisateur
 
