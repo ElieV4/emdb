@@ -36,6 +36,8 @@ export class PrismaService implements OnModuleDestroy {
   user_ratings = prisma.user_ratings;
   user_watches = prisma.user_watches;
   list_items = prisma.list_items;
+  user_lists = prisma.user_lists;
+  list_shares = prisma.list_shares;
   user_follows_serie = prisma.user_follows_serie;
   notifications = prisma.notifications;
 
@@ -61,6 +63,17 @@ export class PrismaService implements OnModuleDestroy {
    */
   async $executeRawUnsafe(sql: string, ...params: any[]): Promise<number> {
     return prisma.$executeRawUnsafe(sql, ...params);
+  }
+
+  /**
+   * Exécute un tableau d'opérations dans une transaction Prisma.
+   * Utile pour les mises à jour atomiques (ex: réordonnancement batch).
+   *
+   * @param operations - Tableau de promesses Prisma
+   * @returns Les résultats des opérations
+   */
+  async $transaction(operations: any): Promise<any> {
+    return prisma.$transaction(operations);
   }
 
   onModuleDestroy() {

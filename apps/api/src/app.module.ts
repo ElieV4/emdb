@@ -12,6 +12,7 @@ import { CreditsModule } from './credits/credits.module';
 import { DatavizModule } from './dataviz/dataviz.module';
 import { WatchesModule } from './watches/watches.module';
 import { RatingsModule } from './ratings/ratings.module';
+import { ListsModule } from './lists/lists.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { RatingsModule } from './ratings/ratings.module';
     DatavizModule,
     WatchesModule,
     RatingsModule,
+    ListsModule,
   ],
   controllers: [AppController],
 })
