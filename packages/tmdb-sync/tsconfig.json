@@ -1,6 +1,7 @@
 {
   "extends": "../db/tsconfig.json",
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "rootDir": ".",
     "paths": {
