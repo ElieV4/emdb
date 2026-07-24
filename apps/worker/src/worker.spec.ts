@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 jest.mock('ioredis', () => {
   return jest.fn().mockImplementation(() => ({
     on: jest.fn(),
@@ -35,7 +37,19 @@ import {
   getCronRepeatJobs,
   IMPORT_QUEUE_NAME,
   CRON_QUEUE_NAME,
+  cleanOldNotifications,
+  cleanStaleNotifications,
 } from './worker';
+
+jest.mock('@emdb/db', () => ({
+  prisma: {
+    notifications: {
+      deleteMany: jest.fn(),
+    },
+  },
+}));
+
+const mockPrisma = jest.requireMock('@emdb/db').prisma;
 
 describe('worker queue helpers', () => {
   const redisUrl = 'redis://localhost:6379';
@@ -51,6 +65,7 @@ describe('worker queue helpers', () => {
       await cronQueue.close();
       cronQueue = null;
     }
+    jest.clearAllMocks();
   });
 
   it('should create import and cron queue objects', async () => {
@@ -69,7 +84,58 @@ describe('worker queue helpers', () => {
         expect.objectContaining({ name: 'daily-sync-new-episodes' }),
         expect.objectContaining({ name: 'weekly-resync-changes' }),
         expect.objectContaining({ name: 'refresh-materialized-views' }),
+        expect.objectContaining({ name: 'clean-notifications' }),
       ]),
     );
+  });
+});
+
+describe('notification cleanup functions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('cleanOldNotifications should delete read notifications older than 30 days', async () => {
+    mockPrisma.notifications.deleteMany.mockResolvedValue({ count: 5 });
+
+    const result = await cleanOldNotifications();
+
+    expect(result).toBe(5);
+    expect(mockPrisma.notifications.deleteMany).toHaveBeenCalledWith({
+      where: {
+        lu: true,
+        created_at: { lt: expect.any(Date) },
+      },
+    });
+  });
+
+  it('cleanOldNotifications should return 0 if no notifications to delete', async () => {
+    mockPrisma.notifications.deleteMany.mockResolvedValue({ count: 0 });
+
+    const result = await cleanOldNotifications();
+
+    expect(result).toBe(0);
+  });
+
+  it('cleanStaleNotifications should delete unread notifications older than 90 days', async () => {
+    mockPrisma.notifications.deleteMany.mockResolvedValue({ count: 3 });
+
+    const result = await cleanStaleNotifications();
+
+    expect(result).toBe(3);
+    expect(mockPrisma.notifications.deleteMany).toHaveBeenCalledWith({
+      where: {
+        lu: false,
+        created_at: { lt: expect.any(Date) },
+      },
+    });
+  });
+
+  it('cleanStaleNotifications should return 0 if no notifications to delete', async () => {
+    mockPrisma.notifications.deleteMany.mockResolvedValue({ count: 0 });
+
+    const result = await cleanStaleNotifications();
+
+    expect(result).toBe(0);
   });
 });

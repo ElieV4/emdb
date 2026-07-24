@@ -300,7 +300,7 @@ Découpage en 3 sous-phases (ordre recommandé par dépendances croissantes) :
   | `GET` | `/notifications` | ✅ JWT | `ListNotificationsFilterDto` | Liste des notifications (non lues en priorité, paginée) |
   | `PATCH` | `/notifications/:id/read` | ✅ JWT | — | Marquer une notification comme lue |
   | `PATCH` | `/notifications/read-all` | ✅ JWT | — | Marquer toutes les notifications comme lues |
-  | `GET` | `/notifications/unread-count` | ✅ JWT | — | Compteur de notifications non lues |
+  | `GET` | `/notifications/unread-count` | ✅ JWT | — | Compteur de non lues |
 
   **DTOs :**
   ```typescript
@@ -474,7 +474,7 @@ Découpage en 3 sous-phases (ordre recommandé par dépendances croissantes) :
 
 ### 7.3 Nettoyage et maintenance des notifications
   *Dépend de :* Phase 7.1 (module API), Phase 7.2 (génération)
-  *Status: ❌ À implémenter*
+  *Status: ✅ Implémenté*
 
   **Contexte :** Les notifications s'accumulent dans la table `notifications`. Sans nettoyage, la table peut devenir volumineuse. Un job de maintenance périodique est nécessaire.
 
@@ -519,8 +519,9 @@ Découpage en 3 sous-phases (ordre recommandé par dépendances croissantes) :
     - Log : nombre de notifications supprimées
 
   **Fichiers modifiés :**
-  - `apps/worker/src/worker.ts` — Ajout du job `clean-notifications` dans le cron worker
+  - `apps/worker/src/worker.ts` — Ajout du job `clean-notifications`, des fonctions `cleanOldNotifications` et `cleanStaleNotifications`, et de la planification cron
   - `apps/worker/src/worker.spec.ts` — Tests du job de nettoyage
+  - `docs/emdb_roadmap_backend.md` — Statut Phase 7.3 marqué comme implémenté
 
   **Tests :**
   - `cleanOldNotifications` : supprime les notifications lues de plus de 30 jours
@@ -547,7 +548,7 @@ Découpage en 3 sous-phases (ordre recommandé par dépendances croissantes) :
 5. Phase 4 (features utilisateur) ✅
 6. Phase 5 (recommandations, batch mensuel) ✅
 7. Phase 6 (dataviz, lecture des `mv_*` déjà en place depuis la phase 1) ✅
-8. **Phase 7 (notifications)** ❌ À implémenter
+8. **Phase 7 (notifications)** ✅
 
 Fichiers de référence : `db_init_v3.sql` (schéma complet avec 8 vues matérialisées), cette roadmap.
 
@@ -555,7 +556,7 @@ Fichiers de référence : `db_init_v3.sql` (schéma complet avec 8 vues matéria
 
 ## 📊 Résumé des modifications apportées
 
-### Phase 7 — Notifications (Nouvelle)
+### Phase 7 — Notifications (Complétée)
 - **7.1** : Module API NestJS `notifications` (4 endpoints)
 - **7.2** : Génération automatique dans le worker + tmdb-sync
 - **7.3** : Nettoyage et maintenance (cron hebdomadaire/mensuel)

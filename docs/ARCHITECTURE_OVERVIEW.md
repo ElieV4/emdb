@@ -526,8 +526,9 @@ emdb/
 - Types : `new_episode`, `season_premiere`, `series_return`
 
 **Maintenance** (Phase 7.3) :
-- Nettoyage hebdomadaire des notifications lues de plus de 30 jours
-- Nettoyage mensuel des notifications non lues de plus de 90 jours
+- Nettoyage automatique via job BullMQ `clean-notifications`
+- Hebdomadaire : suppression des notifications lues de plus de 30 jours
+- Mensuel : suppression des notifications non lues de plus de 90 jours
 
 ---
 
@@ -542,7 +543,9 @@ emdb/
 - `refresh-materialized-views` : Refresh des 8 vues matérialisées
 - `compute-recommendations` : Calcul batch des recommandations
 - `generate-notifications` : Génération des notifications (Phase 7.2)
-- `clean-notifications` : Nettoyage des notifications obsolètes (Phase 7.3)
+- `clean-notifications` : Nettoyage automatique des notifications (Phase 7.3)
+  - Hebdomadaire : suppression des notifications lues de plus de 30 jours
+  - Mensuel : suppression des notifications non lues de plus de 90 jours
 
 **Fonctionnalités** :
 - Traitement asynchrone via Redis + BullMQ
@@ -674,7 +677,7 @@ Toutes les vues sont rafraîchies **toutes les 3 heures** via worker avec `REFRE
 | 4 | Fonctionnalités utilisateur | ✅ | watches, ratings, lists, follows |
 | 5 | Recommandations (algorithme maison) | ✅ | recommender (5.1), admin + worker (5.2), fallback (5.3) |
 | 6 | Dataviz (vues matérialisées) | ✅ | dataviz, admin |
-| **7** | **Notifications** | 🔄 | **notifications (7.1 ✅), tmdb-sync + worker (7.2 ✅), worker (7.3 ⏳)** |
+| **7** | **Notifications** | ✅ | **notifications (7.1 ✅), tmdb-sync + worker (7.2 ✅), worker (7.3 ✅)** |
 
 ---
 

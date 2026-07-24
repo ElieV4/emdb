@@ -10,6 +10,7 @@
     "outDir": "./dist",
     "rootDir": ".",
     "baseUrl": "./",
+    "ignoreDeprecations": "6.0",
     "types": ["node", "jest", "multer"],
     "incremental": true,
     "skipLibCheck": true,

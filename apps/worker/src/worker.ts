@@ -19,7 +19,8 @@ export type CronJobData =
   | { type: 'daily-sync-new-episodes' }
   | { type: 'weekly-resync-changes'; startDate?: string; endDate?: string }
   | { type: 'refresh-materialized-views' }
-  | { type: 'generate-notifications' };
+  | { type: 'generate-notifications' }
+  | { type: 'clean-notifications' };
 
 export const IMPORT_QUEUE_NAME = 'tmdb-import';
 export const CRON_QUEUE_NAME = 'tmdb-cron';
@@ -58,6 +59,48 @@ export async function refreshMaterializedViews() {
   }
 }
 
+/**
+ * Nettoie les notifications lues de plus de 30 jours.
+ *
+ * Exécution hebdomadaire recommandée.
+ *
+ * @returns Nombre de notifications supprimées
+ */
+export async function cleanOldNotifications(): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+
+  const result = await prisma.notifications.deleteMany({
+    where: {
+      lu: true,
+      created_at: { lt: cutoff },
+    },
+  });
+
+  return result.count;
+}
+
+/**
+ * Nettoie les notifications non lues de plus de 90 jours (obsolètes).
+ *
+ * Exécution mensuelle recommandée.
+ *
+ * @returns Nombre de notifications supprimées
+ */
+export async function cleanStaleNotifications(): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 90);
+
+  const result = await prisma.notifications.deleteMany({
+    where: {
+      lu: false,
+      created_at: { lt: cutoff },
+    },
+  });
+
+  return result.count;
+}
+
 export function getCronRepeatJobs() {
   return [
     {
@@ -86,6 +129,16 @@ export function getCronRepeatJobs() {
       options: {
         jobId: 'refresh-materialized-views',
         repeat: { cron: '0 4 * * *' },
+        removeOnComplete: true,
+        removeOnFail: true,
+      } as JobsOptions,
+    },
+    {
+      name: 'clean-notifications',
+      data: {},
+      options: {
+        jobId: 'clean-notifications',
+        repeat: { cron: '0 4 * * 0' },
         removeOnComplete: true,
         removeOnFail: true,
       } as JobsOptions,
@@ -165,6 +218,17 @@ export function createCronWorker(redisUrl: string) {
         }
         case 'refresh-materialized-views':
           return refreshMaterializedViews();
+        case 'clean-notifications': {
+          const oldDeleted = await cleanOldNotifications();
+          const staleDeleted = await cleanStaleNotifications();
+          console.log(
+            `Nettoyage notifications : ${oldDeleted} lues (>30j) + ${staleDeleted} non lues (>90j) supprimées`,
+          );
+          return {
+            old_notifications_deleted: oldDeleted,
+            stale_notifications_deleted: staleDeleted,
+          };
+        }
         default:
           throw new Error(`Unsupported cron job type: ${(data as any).type}`);
       }
