@@ -1,7 +1,7 @@
 # eMDB - Architecture & Modules Overview
 
 *Documentation synthétique à destination des Chefs de Projet Data / Product Owners*
-*Dernière mise à jour : 23 juillet 2026*
+*Dernière mise à jour : 24 juillet 2026*
 
 ---
 
@@ -60,6 +60,9 @@ eMDB est une application de **tracking de films et séries** avec des fonctionna
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────────┐ │
 │  │  Watches    │ │  Ratings    │ │   Lists     │ │  Dataviz   │ │
 │  └─────────────┘ └─────────────┘ └─────────────┘ └────────────┘ │
+│  ┌─────────────┐ ┌─────────────┐                                 │
+│  │  Notifs     │ │ Recommender │                                 │
+│  └─────────────┘ └─────────────┘                                 │
 │  ┌─────────────────────────────────────────────────────────────┐ │
 │  │                    Prisma ORM (packages/db)                   │ │
 │  └─────────────────────────────────────────────────────────────┘ │
@@ -74,10 +77,11 @@ eMDB est une application de **tracking de films et séries** avec des fonctionna
                     ▼               ▼
         ┌─────────────────────────────────────────────────────────┐
         │                    WORKER (BullMQ)                         │
-        │  - Import TMDB batch                                           │
-        │  - Refresh données périodiques                                  │
-        │  - Calcul recommandations                                      │
-        │  - Notifications                                               │
+        │  - Import TMDB batch                                      │
+        │  - Refresh données périodiques                            │
+        │  - Calcul recommandations                                 │
+        │  - Génération notifications                               │
+        │  - Nettoyage notifications                                │
         └─────────────────────────────────────────────────────────┘
 ```
 
@@ -130,6 +134,7 @@ apps/web/
 │   ├── ratings/          # RatingInput, RatingSummary
 │   ├── lists/            # ListCard, ListReorder
 │   ├── dataviz/          # Graphiques Recharts
+│   ├── notifications/    # NotificationItem, NotificationsBadge
 │   └── common/           # LoadingSpinner, ErrorBoundary
 │
 ├── hooks/                # Hooks personnalisés
@@ -194,6 +199,7 @@ emdb/
 │   │   │   ├── ratings/        # Notations utilisateur
 │   │   │   ├── lists/          # Listes personnalisées
 │   │   │   ├── dataviz/        # Visualisation données (vues matérialisées)
+│   │   │   ├── notifications/  # Notifications utilisateur (Phase 7.1)
 │   │   │   ├── admin/          # Endpoints administrateurs
 │   │   │   ├── recommender/    # Module recommandations (Phase 5.2)
 │   │   │   │   ├── recommender.module.ts
@@ -209,7 +215,7 @@ emdb/
 │   └── worker/                # Worker asynchrone (BullMQ)
 │       ├── src/
 │       │   ├── index.ts           # Point d'entrée
-│       │   ├── worker.ts          # Jobs TMDB + cron
+│       │   ├── worker.ts          # Jobs TMDB + cron + notifications
 │       │   ├── recommendations.worker.ts  # Worker recommandations (Phase 5.2)
 │       │   ├── cron.ts            # Planification mensuelle recommandations
 │       │   └── worker.spec.ts     # Tests
@@ -233,7 +239,7 @@ emdb/
 │   │
 │   ├── tmdb-sync/             # Synchronisation TMDB
 │   │   └── src/
-│   │       └── index.ts       # Orchestration import/refresh
+│   │       └── index.ts       # Orchestration import/refresh + notifications
 │   │
 │   └── wikidata-client/       # Client Wikidata (résolution IDs)
 │       └── src/
@@ -485,9 +491,7 @@ emdb/
 ### Module 12: Admin (`apps/api/src/admin/`)
 
 **Fonctionnalités** :
-- Déclenchement manuel du calcul des recommandations
-- Refresh manuel des vues matérialisées
-- Statistiques (dernier run, durée...)
+- Déclenchement manuel du refresh des vues matérialisées
 - Réservé aux administrateurs
 
 **Dépendances** :
@@ -497,16 +501,48 @@ emdb/
 
 ---
 
-### Module 13: Worker (`apps/worker/`)
+### Module 13: Notifications (`apps/api/src/notifications/`)
+
+**Fonctionnalités** (Phase 7.1) :
+- Consultation des notifications (liste paginée, non lues en priorité)
+- Marquage d'une notification comme lue
+- Marquage de toutes les notifications comme lues
+- Compteur de notifications non lues
+
+**Endpoints** :
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/notifications` | ✅ JWT | Liste paginée des notifications |
+| `PATCH` | `/notifications/:id/read` | ✅ JWT | Marquer une notification comme lue |
+| `PATCH` | `/notifications/read-all` | ✅ JWT | Tout marquer comme lu |
+| `GET` | `/notifications/unread-count` | ✅ JWT | Compteur de non lues |
+
+**Dépendances** :
+- `@emdb/db` (Prisma Notification, Episode, Title)
+- Module `auth` (JwtAuthGuard)
+
+**Génération** (Phase 7.2) :
+- `dailySyncNewEpisodes()` dans tmdb-sync enrichie pour créer des notifications
+- Types : `new_episode`, `season_premiere`, `series_return`
+
+**Maintenance** (Phase 7.3) :
+- Nettoyage hebdomadaire des notifications lues de plus de 30 jours
+- Nettoyage mensuel des notifications non lues de plus de 90 jours
+
+---
+
+### Module 14: Worker (`apps/worker/`)
 
 **Jobs Gérés** :
 - `import-title` : Import d'un titre depuis TMDB
 - `import-seasons` : Import saisons/épisodes pour une série
 - `refresh-title` : Rafraîchissement données TMDB d'un titre
-- `daily-sync-new-episodes` : Synchronisation quotidienne (nouveaux épisodes)
+- `daily-sync-new-episodes` : Synchronisation quotidienne (nouveaux épisodes + notifications)
 - `weekly-resync-changes` : Resynchronisation hebdomadaire
 - `refresh-materialized-views` : Refresh des 8 vues matérialisées
 - `compute-recommendations` : Calcul batch des recommandations
+- `generate-notifications` : Génération des notifications (Phase 7.2)
+- `clean-notifications` : Nettoyage des notifications obsolètes (Phase 7.3)
 
 **Fonctionnalités** :
 - Traitement asynchrone via Redis + BullMQ
@@ -545,6 +581,13 @@ Frontend → Auth (JWT) → [watches/POST, ratings/PUT, lists/POST] → Base de 
 Frontend → API/dataviz → $queryRawUnsafe → VUES MATERIALISEES (8) ← Worker (refresh cron 3h)
 ```
 
+### Flux Notifications : Nouvel Épisode
+
+```
+Worker (daily-sync-new-episodes) → tmdb-sync (generateNewEpisodeNotifications) →
+  PostgreSQL (notifications) ← API/notifications → Frontend (badge + liste)
+```
+
 ---
 
 ## Dépendances Inter-Modules
@@ -565,6 +608,7 @@ Frontend → API/dataviz → $queryRawUnsafe → VUES MATERIALISEES (8) ← Work
 | dataviz | auth | @emdb/db (vues matérialisées) |
 | recommender | admin | @emdb/db, @emdb/recommender, BullMQ |
 | admin | auth | @emdb/db, BullMQ |
+| **notifications (7.1)** | **auth** | **@emdb/db** |
 | worker | - | @emdb/db, @emdb/tmdb-client, @emdb/tmdb-mapper, @emdb/tmdb-sync, BullMQ, Redis |
 
 ---
@@ -581,7 +625,7 @@ Frontend → API/dataviz → $queryRawUnsafe → VUES MATERIALISEES (8) ← Work
 - Séries (seasons, episodes)
 - Activité utilisateur (user_watches, user_ratings, user_follows_serie)
 - Listes (user_lists, list_items, list_shares)
-- Notifications
+- **Notifications (notifications)**
 - Recommandations (title_recommendations, person_recommendations)
 - Logs (tmdb_sync_log)
 
@@ -628,9 +672,9 @@ Toutes les vues sont rafraîchies **toutes les 3 heures** via worker avec `REFRE
 | 2 | Intégration TMDB (client + mapping + sync) | ✅ | packages/tmdb-* |
 | 3 | API Cœur CRUD | ✅ | auth, users, titles, people, seasons-episodes, credits |
 | 4 | Fonctionnalités utilisateur | ✅ | watches, ratings, lists, follows |
-| 5 | Recommandations (algorithme maison) | ✅ | recommender (5.1), admin + worker (5.2) |
+| 5 | Recommandations (algorithme maison) | ✅ | recommender (5.1), admin + worker (5.2), fallback (5.3) |
 | 6 | Dataviz (vues matérialisées) | ✅ | dataviz, admin |
-| 7 | Notifications | 🔄 | worker, notifications |
+| **7** | **Notifications** | ❌ | **notifications (7.1), tmdb-sync + worker (7.2), worker (7.3)** |
 
 ---
 
@@ -641,6 +685,7 @@ Toutes les vues sont rafraîchies **toutes les 3 heures** via worker avec `REFRE
 3. **Idempotence** : UPSERT basé sur tmdb_id, BullMQ séquentiel
 4. **Recommandations** : O(N²), batch 100, cron mensuel, timeout 30min
 5. **Sécurité** : JWT (15min/7j), bcrypt, .env jamais commité
+6. **Notifications** : Index sur `(user_id, lu, created_at)` pour les requêtes de liste, déduplication par `(episode_id, type)` pour éviter les doublons
 
 ---
 
@@ -654,6 +699,7 @@ Toutes les vues sont rafraîchies **toutes les 3 heures** via worker avec `REFRE
 | Durée calcul recos | Worker | >30min |
 | Taille cache Redis | Redis | >1GB |
 | Taille DB PostgreSQL | PostgreSQL | >10GB |
+| **Notifications générées/jour** | **Worker logs** | **Alerter si 0** |
 
 **Outils** : Bull Board (dev), NestJS Logger, Swagger (/docs)
 

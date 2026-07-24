@@ -286,14 +286,48 @@ admin/
 
 ---
 
-### Module 13: Worker (`apps/worker/`)
+### Module 13: Notifications (`apps/api/src/notifications/`) — Phase 7.1
+
+**Structure du module (à créer) :**
+```
+notifications/
+├── notifications.module.ts          # Configuration du module NestJS
+├── notifications.controller.ts      # Endpoints REST (4 endpoints)
+├── notifications.service.ts         # Logique métier
+├── dto/
+│   └── list-notifications-filter.dto.ts  # DTO pour filtres de liste
+└── notifications.service.spec.ts    # Tests unitaires
+```
+
+**Fichiers sources (6 fichiers) :**
+- `notifications.module.ts`
+- `notifications.controller.ts`
+- `notifications.service.ts`
+- `dto/list-notifications-filter.dto.ts`
+- `notifications.service.spec.ts`
+
+**Endpoints :**
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/notifications` | ✅ JWT | Liste paginée des notifications (non lues en priorité) |
+| `PATCH` | `/notifications/:id/read` | ✅ JWT | Marquer une notification comme lue |
+| `PATCH` | `/notifications/read-all` | ✅ JWT | Marquer toutes les notifications comme lues |
+| `GET` | `/notifications/unread-count` | ✅ JWT | Compteur de notifications non lues |
+
+**Dépendances :**
+- `@emdb/db` (Prisma Notification, Episode, Title)
+- Module `auth` (JwtAuthGuard)
+
+---
+
+### Module 14: Worker (`apps/worker/`)
 
 **Structure du module :**
 ```
 worker/
 ├── src/
 │   ├── index.ts                   # Point d'entrée
-│   ├── worker.ts                  # Jobs TMDB + cron
+│   ├── worker.ts                  # Jobs TMDB + cron + notifications
 │   ├── recommendations.worker.ts  # Worker recommandations (Phase 5.2)
 │   ├── cron.ts                    # Planification mensuelle recommandations
 │   └── worker.spec.ts             # Tests
@@ -308,9 +342,20 @@ worker/
 - `src/worker.spec.ts`
 - `Dockerfile`
 
+**Jobs Gérés :**
+- `import-title` : Import d'un titre depuis TMDB
+- `import-seasons` : Import saisons/épisodes pour une série
+- `refresh-title` : Rafraîchissement données TMDB d'un titre
+- `daily-sync-new-episodes` : Synchronisation quotidienne (nouveaux épisodes + notifications)
+- `weekly-resync-changes` : Resynchronisation hebdomadaire
+- `refresh-materialized-views` : Refresh des 8 vues matérialisées
+- `compute-recommendations` : Calcul batch des recommandations
+- `generate-notifications` : Génération des notifications (Phase 7.2)
+- `clean-notifications` : Nettoyage des notifications obsolètes (Phase 7.3)
+
 ---
 
-### Module 13: Common (`apps/api/src/common/`)
+### Module 15: Common (`apps/api/src/common/`)
 
 **Structure du module :**
 ```
@@ -478,6 +523,7 @@ recommender/
 | Dataviz | `apps/api/src/dataviz/dataviz.service.spec.ts` | 8.1 Ko | ✅ Implémenté |
 | Recommender | `apps/api/src/recommender/recommender.service.spec.ts` | 4.8 Ko | ✅ Implémenté |
 | Admin | `apps/api/src/admin/admin.service.spec.ts` | 3.2 Ko | ✅ Implémenté |
+| **Notifications** | **`apps/api/src/notifications/notifications.service.spec.ts`** | **À créer** | ❌ À implémenter |
 | Worker | `apps/worker/src/worker.spec.ts` | 1.8 Ko | ✅ Implémenté |
 
 #### Tests d'Intégration
@@ -498,7 +544,7 @@ recommender/
 | Package | Fichier | Description |
 |---------|--------|-------------|
 | tmdb-mapper | `packages/tmdb-mapper/src/index.spec.ts` | Tests de mapping TMDB → modèle interne |
-| tmdb-sync | `packages/tmdb-sync/src/index.spec.ts` | Tests d'orchestration d'import |
+| tmdb-sync | `packages/tmdb-sync/src/index.spec.ts` | Tests d'orchestration d'import + notifications |
 | wikidata-client | `packages/wikidata-client/src/index.spec.ts` | Tests du client Wikidata |
 
 ---
@@ -635,6 +681,19 @@ recommender/
 - **Mocks utilisés** : `BullMQ`, `PrismaService`
 - **Couverture** : ~75%
 
+#### Module Notifications (Phase 7.1 — À implémenter)
+- **Fichier** : `notifications.service.spec.ts` (À créer)
+- **Tests prévus** :
+  - `listNotifications` : retourne la liste paginée, triée par non lues en priorité
+  - `listNotifications` : retourne un tableau vide si aucune notification
+  - `markAsRead` : marque une notification comme lue
+  - `markAsRead` : lève NotFound si la notification n'existe pas
+  - `markAsRead` : lève Forbidden si la notification appartient à un autre user
+  - `markAllAsRead` : marque toutes les notifications de l'utilisateur comme lues
+  - `getUnreadCount` : retourne le nombre de notifications non lues
+- **Mocks utilisés** : `PrismaService`
+- **Couverture cible** : ~85%
+
 #### Worker
 - **Fichier** : `worker.spec.ts` (1.8 Ko)
 - **Tests effectués** :
@@ -761,12 +820,12 @@ npm run test:watch
 
 | Catégorie | Nombre | Détails |
 |----------|--------|---------|
-| **Modules API** | 13 | auth, users, titles, people, seasons-episodes, credits, watches, ratings, lists, dataviz, recommender, admin, common |
+| **Modules API** | 14 | auth, users, titles, people, seasons-episodes, credits, watches, ratings, lists, dataviz, recommender, admin, **notifications**, common |
 | **Packages** | 6 | db, tmdb-client, tmdb-mapper, tmdb-sync, wikidata-client, recommender |
-| **Fichiers sources** | ~110+ | Tous les .ts hors tests |
-| **Fichiers de test** | ~22 | Tous les .spec.ts |
-| **Lignes de code** | ~16 000+ | Estimation |
-| **Lignes de test** | ~27 000+ | Estimation |
+| **Fichiers sources** | ~120+ | Tous les .ts hors tests |
+| **Fichiers de test** | ~23 | Tous les .spec.ts |
+| **Lignes de code** | ~17 000+ | Estimation |
+| **Lignes de test** | ~28 000+ | Estimation |
 
 ---
 
