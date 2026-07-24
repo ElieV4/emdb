@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@emdb/db": "*",
+    "@emdb/recommender": "*",
     "@emdb/tmdb-sync": "*",
     "bullmq": "^5.12.1",
     "ioredis": "^5.4.1"
@@ -32,7 +33,8 @@
       "^@emdb/tmdb-sync$": "<rootDir>/../../../packages/tmdb-sync/src/index.ts",
       "^@emdb/tmdb-client$": "<rootDir>/../../../packages/tmdb-client/src/index.ts",
       "^@emdb/tmdb-mapper$": "<rootDir>/../../../packages/tmdb-mapper/src/index.ts",
-      "^@emdb/wikidata-client$": "<rootDir>/../../../packages/wikidata-client/src/index.ts"
+      "^@emdb/wikidata-client$": "<rootDir>/../../../packages/wikidata-client/src/index.ts",
+      "^@emdb/recommender$": "<rootDir>/../../../packages/recommender/src/index.ts"
     },
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {

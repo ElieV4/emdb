@@ -74,6 +74,12 @@ Lire le contenu du dossier ./docs pour comprendre le dépôt
     - personnalisées
     - recommandations auto via algo grâce à un scrap imdb ou tmdb ou autre ?
 
+- recommandations automatiques
+    - titres similaires (algorithme Jaccard pondéré : genres 0.6, acteurs 0.3, réalisateurs 0.1)
+    - personnes similaires (collaborations + bonus genre)
+    - calcul batch mensuel via BullMQ (queue `recommendations`)
+    - endpoints admin : POST /admin/compute-recommendations, GET /admin/compute-recommendations/:jobId/status, GET /admin/recommendations/stats
+
 - calendrier de sortie pour série
     - tvtime like, par série > nombre d'épisodes non vus
 

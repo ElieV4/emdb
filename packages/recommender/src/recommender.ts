@@ -341,4 +341,4 @@ export async function computeRecommendationsForTitle(titleId: string): Promise<T
   }));
 }
 
-export { jaccardSimilarity, hasCommonGenre, hasCommonElement };
+export { jaccardSimilarity, hasCommonGenre };

@@ -348,23 +348,30 @@ Découpage en 3 sous-phases :
 ### 5.2 Module API + intégration worker
   *Dépend de :* Phase 5.1 (algorithme), auth, admin
 
-  - [ ] Endpoint `POST /admin/compute-recommendations` — déclenchement manuel
+  - [x] Endpoint `POST /admin/compute-recommendations` — déclenchement manuel
     - Body : `{ mode?: 'titles' | 'people' | 'all' }`
-    - Auth : JWT + rôle admin (vérification simple via un flag ou email fixe)
-    - Execution synchrone ou via BullMQ selon la latence
-    - Retour : `{ success: true, titles_computed: number, people_computed: number }`
+    - Auth : JWT + AdminGuard (ADMIN_EMAILS dans .env)
+    - Execution via BullMQ (queue `recommendations`)
+    - Retour : `{ jobId, status: 'queued', message }`
 
-  - [ ] **BullMQ** : Queue `recommendations` avec job `compute-recommendations`
+  - [x] **BullMQ** : Queue `recommendations` avec job `compute-recommendations`
     - Concurrency : 1 (calcul lourd, pas parallélisable sans risque de conflit)
     - Timeout : 30 minutes (évite le kill du worker pour les longs calculs)
+    - Retry : 0 (calcul déterministe)
 
-  - [ ] **Cron mensuel** : job planifié `compute-recommendations-cron`
+  - [x] **Cron mensuel** : job planifié `compute-recommendations-cron`
     - Exécuté le 1er de chaque mois à 03:00
     - Mode 'all'
-    - Notification en cas d'échec (log + métrique)
+    - Utilise `QueueScheduler` BullMQ
 
-  - [ ] Module API `recommender` dans NestJS (optionnel si on veut exposer des stats)
+  - [x] Module API `recommender` dans NestJS
     - `GET /admin/recommendations/stats` — statistiques : nombre total de recommandations calculées, date du dernier run, durée du dernier run
+    - `GET /admin/compute-recommendations/:jobId/status` — statut du job BullMQ
+
+  **Fichiers créés :**
+  - `apps/api/src/recommender/` — Module NestJS (controller, service, DTOs, config)
+  - `apps/worker/src/recommendations.worker.ts` — Worker BullMQ pour les recommandations
+  - `apps/worker/src/cron.ts` — Planification mensuelle via QueueScheduler
 
 ### 5.3 Fallback TMDB pour person_recommendations
   *Dépend de :* Phase 2.3 (tmdb-sync), Phase 5.1 (algorithme maison)

@@ -2,7 +2,7 @@
   "extends": "../db/tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "types": ["node"]
+    "types": ["node", "jest"]
   },
   "include": ["src/index.ts"],
   "exclude": ["src/**/*.spec.ts"]

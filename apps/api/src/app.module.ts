@@ -13,6 +13,7 @@ import { DatavizModule } from './dataviz/dataviz.module';
 import { WatchesModule } from './watches/watches.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { ListsModule } from './lists/lists.module';
+import { RecommenderModule } from './recommender/recommender.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { ListsModule } from './lists/lists.module';
     WatchesModule,
     RatingsModule,
     ListsModule,
+    RecommenderModule,
   ],
   controllers: [AppController],
 })

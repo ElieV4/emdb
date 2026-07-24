@@ -243,7 +243,31 @@ dataviz/
 
 ---
 
-### Module 11: Admin (`apps/api/src/admin/`)
+### Module 11: Recommender (`apps/api/src/recommender/`)
+
+**Structure du module :**
+```
+recommender/
+├── recommender.module.ts       # Configuration du module NestJS
+├── recommender.controller.ts   # Endpoints REST (3 endpoints)
+├── recommender.service.ts      # Logique métier (BullMQ + stats)
+├── recommender.config.ts       # Configuration BullMQ partagée
+└── dto/
+    ├── compute-recs.dto.ts     # DTO pour POST compute-recommendations
+    └── job-status.dto.ts       # DTO pour réponse status job
+```
+
+**Fichiers sources (7 fichiers) :**
+- `recommender.module.ts`
+- `recommender.controller.ts`
+- `recommender.service.ts`
+- `recommender.config.ts`
+- `dto/compute-recs.dto.ts`
+- `dto/job-status.dto.ts`
+
+---
+
+### Module 12: Admin (`apps/api/src/admin/`)
 
 **Structure du module :**
 ```
@@ -262,21 +286,25 @@ admin/
 
 ---
 
-### Module 12: Worker (`apps/worker/`)
+### Module 13: Worker (`apps/worker/`)
 
 **Structure du module :**
 ```
 worker/
 ├── src/
-│   ├── index.ts           # Point d'entrée
-│   ├── worker.ts          # Logique principale du worker
-│   └── worker.spec.ts     # Tests
+│   ├── index.ts                   # Point d'entrée
+│   ├── worker.ts                  # Jobs TMDB + cron
+│   ├── recommendations.worker.ts  # Worker recommandations (Phase 5.2)
+│   ├── cron.ts                    # Planification mensuelle recommandations
+│   └── worker.spec.ts             # Tests
 └── Dockerfile
 ```
 
-**Fichiers sources (4 fichiers) :**
+**Fichiers sources (6 fichiers) :**
 - `src/index.ts`
 - `src/worker.ts`
+- `src/recommendations.worker.ts`
+- `src/cron.ts`
 - `src/worker.spec.ts`
 - `Dockerfile`
 
@@ -424,7 +452,7 @@ recommender/
 
 | Type de Test | Nombre | Localisation | Couverture | Validation |
 |--------------|---------|--------------|------------|------------|
-| **Unitaires** | 12 | `*.service.spec.ts` | ~80-95% | Jest + Mocking |
+| **Unitaires** | 16 | `*.service.spec.ts` | ~80-95% | Jest + Mocking |
 | **Intégration** | 4 | Fichiers dédiés | ~70-80% | Prisma + Services |
 | **E2E** | 1 | `e2e.spec.ts` | ~60-70% | Supertest + API |
 | **Fonctions PL/pgSQL** | 2 | Tests dédiés | ~100% | Appels `$queryRaw` |
@@ -448,6 +476,7 @@ recommender/
 | Ratings | `apps/api/src/ratings/ratings.service.spec.ts` | 13.4 Ko | ✅ Implémenté |
 | Lists | `apps/api/src/lists/lists.service.spec.ts` | 24.3 Ko | ✅ Implémenté |
 | Dataviz | `apps/api/src/dataviz/dataviz.service.spec.ts` | 8.1 Ko | ✅ Implémenté |
+| Recommender | `apps/api/src/recommender/recommender.service.spec.ts` | 4.8 Ko | ✅ Implémenté |
 | Admin | `apps/api/src/admin/admin.service.spec.ts` | 3.2 Ko | ✅ Implémenté |
 | Worker | `apps/worker/src/worker.spec.ts` | 1.8 Ko | ✅ Implémenté |
 
@@ -588,6 +617,15 @@ recommender/
 - **Mocks utilisés** : `PrismaService` (avec `$queryRawUnsafe`)
 - **Couverture** : ~85%
 
+#### Module Recommender
+- **Fichier** : `recommender.service.spec.ts` (4.8 Ko)
+- **Tests effectués** :
+  - Déclenchement compute recommendations (titles, people, all)
+  - Récupération statut job BullMQ (not_found, completed, failed)
+  - Récupération statistiques globales
+- **Mocks utilisés** : `BullMQ Queue`, `PrismaService`, `ConfigService`
+- **Couverture** : ~80%
+
 #### Module Admin
 - **Fichier** : `admin.service.spec.ts` (3.2 Ko)
 - **Tests effectués** :
@@ -723,12 +761,12 @@ npm run test:watch
 
 | Catégorie | Nombre | Détails |
 |----------|--------|---------|
-| **Modules API** | 12 | auth, users, titles, people, seasons-episodes, credits, watches, ratings, lists, dataviz, admin, common |
-| **Packages** | 5 | db, tmdb-client, tmdb-mapper, tmdb-sync, wikidata-client |
-| **Fichiers sources** | ~100+ | Tous les .ts hors tests |
-| **Fichiers de test** | ~20 | Tous les .spec.ts |
-| **Lignes de code** | ~15 000+ | Estimation |
-| **Lignes de test** | ~25 000+ | Estimation |
+| **Modules API** | 13 | auth, users, titles, people, seasons-episodes, credits, watches, ratings, lists, dataviz, recommender, admin, common |
+| **Packages** | 6 | db, tmdb-client, tmdb-mapper, tmdb-sync, wikidata-client, recommender |
+| **Fichiers sources** | ~110+ | Tous les .ts hors tests |
+| **Fichiers de test** | ~22 | Tous les .spec.ts |
+| **Lignes de code** | ~16 000+ | Estimation |
+| **Lignes de test** | ~27 000+ | Estimation |
 
 ---
 

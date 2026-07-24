@@ -195,12 +195,24 @@ emdb/
 │   │   │   ├── lists/          # Listes personnalisées
 │   │   │   ├── dataviz/        # Visualisation données (vues matérialisées)
 │   │   │   ├── admin/          # Endpoints administrateurs
+│   │   │   ├── recommender/    # Module recommandations (Phase 5.2)
+│   │   │   │   ├── recommender.module.ts
+│   │   │   │   ├── recommender.controller.ts
+│   │   │   │   ├── recommender.service.ts
+│   │   │   │   ├── recommender.config.ts
+│   │   │   │   └── dto/
+│   │   │   │       ├── compute-recs.dto.ts
+│   │   │   │       └── job-status.dto.ts
 │   │   │   └── common/         # Code partagé (Prisma, Guards...)
 │   │   └── ...
 │   │
 │   └── worker/                # Worker asynchrone (BullMQ)
 │       ├── src/
-│       │   └── worker.ts       # Traitement des jobs
+│       │   ├── index.ts           # Point d'entrée
+│       │   ├── worker.ts          # Jobs TMDB + cron
+│       │   ├── recommendations.worker.ts  # Worker recommandations (Phase 5.2)
+│       │   ├── cron.ts            # Planification mensuelle recommandations
+│       │   └── worker.spec.ts     # Tests
 │       └── Dockerfile
 │
 ├── packages/
@@ -227,7 +239,7 @@ emdb/
 │       └── src/
 │           └── index.ts
 │
-│   └── recommender/           # Algorithme de recommandation (Phase 5.1)
+│   └── recommender/           # Algorithme de recommandation (Phase 5.1 + 5.2)
 │       ├── src/
 │       │   ├── index.ts       # Exports principaux
 │       │   ├── jaccard.ts      # Utilitaires Jaccard
@@ -449,7 +461,28 @@ emdb/
 
 ---
 
-### Module 11: Admin (`apps/api/src/admin/`)
+### Module 11: Recommender (`apps/api/src/recommender/`)
+
+**Fonctionnalités** :
+- Déclenchement manuel du calcul des recommandations (titres + personnes)
+- Suivi de job BullMQ (status, progression, résultat)
+- Statistiques globales (total recs, dernier run, durée)
+- Réservé aux administrateurs
+
+**Endpoints** :
+- `POST /admin/compute-recommendations` — Lance le calcul via BullMQ
+- `GET /admin/compute-recommendations/:jobId/status` — Statut du job
+- `GET /admin/recommendations/stats` — Statistiques globales
+
+**Dépendances** :
+- `@emdb/db` (Prisma pour les stats)
+- `@emdb/recommender` (algorithme Jaccard)
+- BullMQ (queue `recommendations`)
+- Module `admin` (AdminGuard via `@UseGuards`)
+
+---
+
+### Module 12: Admin (`apps/api/src/admin/`)
 
 **Fonctionnalités** :
 - Déclenchement manuel du calcul des recommandations
@@ -464,7 +497,7 @@ emdb/
 
 ---
 
-### Module 12: Worker (`apps/worker/`)
+### Module 13: Worker (`apps/worker/`)
 
 **Jobs Gérés** :
 - `import-title` : Import d'un titre depuis TMDB
@@ -530,6 +563,7 @@ Frontend → API/dataviz → $queryRawUnsafe → VUES MATERIALISEES (8) ← Work
 | ratings | auth, titles | @emdb/db |
 | lists | auth, users, titles | @emdb/db |
 | dataviz | auth | @emdb/db (vues matérialisées) |
+| recommender | admin | @emdb/db, @emdb/recommender, BullMQ |
 | admin | auth | @emdb/db, BullMQ |
 | worker | - | @emdb/db, @emdb/tmdb-client, @emdb/tmdb-mapper, @emdb/tmdb-sync, BullMQ, Redis |
 
@@ -594,7 +628,7 @@ Toutes les vues sont rafraîchies **toutes les 3 heures** via worker avec `REFRE
 | 2 | Intégration TMDB (client + mapping + sync) | ✅ | packages/tmdb-* |
 | 3 | API Cœur CRUD | ✅ | auth, users, titles, people, seasons-episodes, credits |
 | 4 | Fonctionnalités utilisateur | ✅ | watches, ratings, lists, follows |
-| 5 | Recommandations (algorithme maison) | ✅ | admin, worker, packages/recommender |
+| 5 | Recommandations (algorithme maison) | ✅ | recommender (5.1), admin + worker (5.2) |
 | 6 | Dataviz (vues matérialisées) | ✅ | dataviz, admin |
 | 7 | Notifications | 🔄 | worker, notifications |
 
