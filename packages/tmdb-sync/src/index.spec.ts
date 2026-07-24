@@ -2,17 +2,19 @@ import { jest } from '@jest/globals';
 
 const prismaMock: any = {
   people: { upsert: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
-  titles: { findUnique: jest.fn(), upsert: jest.fn() },
+  titles: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn() },
   title_recommendations: { createMany: jest.fn() },
   seasons: { upsert: jest.fn() },
   episodes: { upsert: jest.fn() },
   roles: { upsert: jest.fn() },
-  credits: { create: jest.fn() },
+  credits: { create: jest.fn(), findMany: jest.fn() },
   genres: { upsert: jest.fn() },
   countries: { upsert: jest.fn() },
   title_genres: { createMany: jest.fn() },
   title_countries: { createMany: jest.fn() },
   tmdb_sync_log: { create: jest.fn() },
+  person_recommendations: { deleteMany: jest.fn(), createMany: jest.fn() },
+  $transaction: jest.fn(),
 };
 
 jest.mock('@emdb/tmdb-client', () => ({
@@ -26,6 +28,7 @@ jest.mock('@emdb/tmdb-client', () => ({
   getMovieSimilar: jest.fn(),
   getTvRecommendations: jest.fn(),
   getTvSimilar: jest.fn(),
+  getPersonCombinedCredits: jest.fn(),
 }));
 
 jest.mock('@emdb/tmdb-mapper', () => ({
@@ -54,6 +57,7 @@ const asMock = (fn: any) => fn as any;
 const {
   importPersonByTmdbId,
   bootstrapRecommendationsFromTmdb,
+  bootstrapPersonRecommendationsFromTmdb,
   importTitleByTmdbId,
   importSeasonsForSerie,
 } = require('./index');
@@ -67,6 +71,7 @@ const {
   getTvSeason,
   getMovieRecommendations,
   getMovieSimilar,
+  getPersonCombinedCredits,
 } = tmdbClient;
 
 const tmdbMapper = require('@emdb/tmdb-mapper') as any;
@@ -256,5 +261,118 @@ describe('tmdb-sync', () => {
         numero: 1,
       }),
     }));
+  });
+
+  describe('bootstrapPersonRecommendationsFromTmdb', () => {
+    it('appelle getPersonCombinedCredits et insère des recommandations', async () => {
+      asMock(prismaMock.people.findUnique).mockResolvedValue({ id: 'person-uuid', tmdb_id: 42 });
+      asMock(getPersonCombinedCredits).mockResolvedValue({
+        cast: [{ id: 100 }, { id: 101 }],
+        crew: [{ id: 102 }],
+      });
+      asMock(prismaMock.titles.findMany).mockResolvedValue([
+        { id: 'title-1' },
+        { id: 'title-2' },
+        { id: 'title-3' },
+      ]);
+      asMock(prismaMock.credits.findMany).mockResolvedValue([
+        { person_id: 'other-1', title_id: 'title-1' },
+        { person_id: 'other-1', title_id: 'title-2' },
+        { person_id: 'other-2', title_id: 'title-1' },
+        { person_id: 'other-3', title_id: 'title-3' },
+      ]);
+
+      // Mock $transaction to execute the callback
+      asMock(prismaMock.$transaction).mockImplementation(async (cb: any) => {
+        const tx = {
+          person_recommendations: {
+            deleteMany: prismaMock.person_recommendations.deleteMany,
+            createMany: prismaMock.person_recommendations.createMany,
+          },
+        };
+        return cb(tx);
+      });
+
+      const result = await bootstrapPersonRecommendationsFromTmdb('person-uuid');
+
+      expect(result).toBeGreaterThan(0);
+      expect(getPersonCombinedCredits).toHaveBeenCalledWith(42);
+      expect(prismaMock.person_recommendations.deleteMany).toHaveBeenCalledWith({
+        where: { person_id: 'person-uuid' },
+      });
+      expect(prismaMock.person_recommendations.createMany).toHaveBeenCalledWith({
+        data: expect.arrayContaining([
+          expect.objectContaining({ person_id: 'person-uuid' }),
+        ]),
+      });
+    });
+
+    it('retourne 0 si la personne n\'a pas de tmdb_id', async () => {
+      asMock(prismaMock.people.findUnique).mockResolvedValue({ id: 'person-uuid', tmdb_id: null });
+
+      await expect(bootstrapPersonRecommendationsFromTmdb('person-uuid')).rejects.toThrow(
+        "La personne n'a pas de tmdb_id",
+      );
+    });
+
+    it('retourne 0 si aucun titre local trouvé', async () => {
+      asMock(prismaMock.people.findUnique).mockResolvedValue({ id: 'person-uuid', tmdb_id: 42 });
+      asMock(getPersonCombinedCredits).mockResolvedValue({
+        cast: [{ id: 100 }],
+        crew: [],
+      });
+      asMock(prismaMock.titles.findMany).mockResolvedValue([]); // Aucun titre local
+
+      const result = await bootstrapPersonRecommendationsFromTmdb('person-uuid');
+
+      expect(result).toBe(0);
+    });
+
+    it('limite à 10 recommandations max', async () => {
+      asMock(prismaMock.people.findUnique).mockResolvedValue({ id: 'person-uuid', tmdb_id: 42 });
+      asMock(getPersonCombinedCredits).mockResolvedValue({
+        cast: [{ id: 1 }, { id: 2 }],
+        crew: [],
+      });
+      asMock(prismaMock.titles.findMany).mockResolvedValue([{ id: 'title-1' }, { id: 'title-2' }]);
+
+      // 15 autres personnes ayant travaillé sur ces titres
+      const manyCredits = Array.from({ length: 15 }, (_, i) => ({
+        person_id: `other-${i}`,
+        title_id: 'title-1',
+      }));
+      asMock(prismaMock.credits.findMany).mockResolvedValue(manyCredits);
+
+      asMock(prismaMock.$transaction).mockImplementation(async (cb: any) => {
+        const tx = {
+          person_recommendations: {
+            deleteMany: prismaMock.person_recommendations.deleteMany,
+            createMany: prismaMock.person_recommendations.createMany,
+          },
+        };
+        return cb(tx);
+      });
+
+      const result = await bootstrapPersonRecommendationsFromTmdb('person-uuid');
+
+      expect(result).toBeLessThanOrEqual(10);
+    });
+
+    it('lève Error si personne introuvable', async () => {
+      asMock(prismaMock.people.findUnique).mockResolvedValue(null);
+
+      await expect(bootstrapPersonRecommendationsFromTmdb('nonexistent')).rejects.toThrow(
+        'Personne introuvable.',
+      );
+    });
+
+    it('retourne 0 si aucun credit TMDB', async () => {
+      asMock(prismaMock.people.findUnique).mockResolvedValue({ id: 'person-uuid', tmdb_id: 42 });
+      asMock(getPersonCombinedCredits).mockResolvedValue({ cast: [], crew: [] });
+
+      const result = await bootstrapPersonRecommendationsFromTmdb('person-uuid');
+
+      expect(result).toBe(0);
+    });
   });
 });

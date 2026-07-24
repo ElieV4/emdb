@@ -10,10 +10,11 @@ jest.mock('@emdb/tmdb-client', () => ({
 jest.mock('@emdb/tmdb-sync', () => ({
   importPersonByTmdbId: jest.fn(),
   refreshPersonData: jest.fn(),
+  bootstrapPersonRecommendationsFromTmdb: jest.fn(),
 }));
 
 import { searchPerson } from '@emdb/tmdb-client';
-import { importPersonByTmdbId, refreshPersonData } from '@emdb/tmdb-sync';
+import { importPersonByTmdbId, refreshPersonData, bootstrapPersonRecommendationsFromTmdb } from '@emdb/tmdb-sync';
 
 const prismaServiceMock = {
   people: {
@@ -252,7 +253,7 @@ describe('PeopleService', () => {
 
   describe('getRecommendations', () => {
     it('retourne les recommandations si présentes', async () => {
-      prismaServiceMock.people.findUnique.mockResolvedValue({ id: 'person-1' });
+      prismaServiceMock.people.findUnique.mockResolvedValue({ id: 'person-1', tmdb_id: 12345 });
 
       prismaServiceMock.person_recommendations.findMany.mockResolvedValue([
         {
@@ -271,18 +272,59 @@ describe('PeopleService', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].nom).toBe('Marie Curie');
+      expect(bootstrapPersonRecommendationsFromTmdb).not.toHaveBeenCalled();
     });
 
-    it('retourne un tableau vide si aucune recommandation', async () => {
-      prismaServiceMock.people.findUnique.mockResolvedValue({ id: 'person-1' });
+    it('retourne un tableau vide si aucune recommandation et pas de tmdb_id', async () => {
+      prismaServiceMock.people.findUnique.mockResolvedValue({ id: 'person-1', tmdb_id: null });
       prismaServiceMock.person_recommendations.findMany.mockResolvedValue([]);
+
+      const result = await service.getRecommendations('person-1');
+
+      expect(result).toEqual([]);
+      expect(bootstrapPersonRecommendationsFromTmdb).not.toHaveBeenCalled();
+    });
+
+    it('appelle le fallback TMDB si pas de recommandations locales et tmdb_id présent', async () => {
+      prismaServiceMock.people.findUnique.mockResolvedValue({ id: 'person-1', tmdb_id: 12345 });
+      // Premier appel : pas de recommandations locales
+      prismaServiceMock.person_recommendations.findMany
+        .mockResolvedValueOnce([])
+        // Deuxième appel : après bootstrap, des recommandations existent
+        .mockResolvedValueOnce([
+          {
+            people_person_recommendations_recommended_idTopeople: {
+              id: 'person-2',
+              tmdb_id: 67890,
+              nom: 'Marie Curie',
+              photo_url: null,
+              genre: 'femme',
+              bio: 'Une autre personne.',
+            },
+          },
+        ]);
+
+      (bootstrapPersonRecommendationsFromTmdb as jest.Mock).mockResolvedValue(1);
+
+      const result = await service.getRecommendations('person-1');
+
+      expect(bootstrapPersonRecommendationsFromTmdb).toHaveBeenCalledWith('person-1');
+      expect(result).toHaveLength(1);
+      expect(result[0].nom).toBe('Marie Curie');
+    });
+
+    it('retourne un tableau vide si TMDB échoue (catch silencieux)', async () => {
+      prismaServiceMock.people.findUnique.mockResolvedValue({ id: 'person-1', tmdb_id: 12345 });
+      prismaServiceMock.person_recommendations.findMany.mockResolvedValue([]);
+
+      (bootstrapPersonRecommendationsFromTmdb as jest.Mock).mockRejectedValue(new Error('TMDB error'));
 
       const result = await service.getRecommendations('person-1');
 
       expect(result).toEqual([]);
     });
 
-    it('lève NotFoundException si la personne n’existe pas', async () => {
+    it('lève NotFoundException si la personne n\'existe pas', async () => {
       prismaServiceMock.people.findUnique.mockResolvedValue(null);
 
       await expect(service.getRecommendations('nonexistent')).rejects.toThrow(NotFoundException);

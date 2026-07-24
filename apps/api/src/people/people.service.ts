@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { searchPerson, TmdbSearchResult } from '@emdb/tmdb-client';
-import { importPersonByTmdbId, refreshPersonData } from '@emdb/tmdb-sync';
+import { importPersonByTmdbId, refreshPersonData, bootstrapPersonRecommendationsFromTmdb } from '@emdb/tmdb-sync';
 
 /**
  * Interface pour le résultat fusionné d'une recherche TMDB + local.
@@ -255,7 +255,9 @@ export class PeopleService {
   /**
    * Recommandations d'une personne.
    *
-   * Lit la table person_recommendations.
+   * Lit la table person_recommendations. Si aucune recommandation locale n'existe
+   * et que la personne a un tmdb_id, déclenche un fallback TMDB via
+   * bootstrapPersonRecommendationsFromTmdb.
    *
    * @param id - UUID de la personne
    * @returns Liste de personnes recommandées
@@ -264,13 +266,14 @@ export class PeopleService {
   async getRecommendations(id: string) {
     const person = await this.prisma.people.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, tmdb_id: true },
     });
 
     if (!person) {
       throw new NotFoundException('Personne introuvable.');
     }
 
+    // 1. Vérifier les recommandations locales
     const recs = await this.prisma.person_recommendations.findMany({
       where: { person_id: id },
       include: {
@@ -288,7 +291,43 @@ export class PeopleService {
       orderBy: { score: 'desc' },
     });
 
-    return recs.map(
+    if (recs.length > 0) {
+      return recs.map(
+        (rec: { people_person_recommendations_recommended_idTopeople: any }) =>
+          rec.people_person_recommendations_recommended_idTopeople,
+      );
+    }
+
+    // 2. Fallback TMDB si pas de recommandations locales
+    if (!person.tmdb_id) {
+      return [];
+    }
+
+    try {
+      await bootstrapPersonRecommendationsFromTmdb(id);
+    } catch {
+      return []; // Silencieux en cas d'échec TMDB
+    }
+
+    // 3. Re-lire les recommandations après bootstrap
+    const newRecs = await this.prisma.person_recommendations.findMany({
+      where: { person_id: id },
+      include: {
+        people_person_recommendations_recommended_idTopeople: {
+          select: {
+            id: true,
+            tmdb_id: true,
+            nom: true,
+            photo_url: true,
+            genre: true,
+            bio: true,
+          },
+        },
+      },
+      orderBy: { score: 'desc' },
+    });
+
+    return newRecs.map(
       (rec: { people_person_recommendations_recommended_idTopeople: any }) =>
         rec.people_person_recommendations_recommended_idTopeople,
     );
