@@ -40,8 +40,8 @@ const config: Config = {
         ring: designTokens.colors.border.focus,
       },
       fontFamily: {
-        sans: designTokens.typography.fontFamily.sans,
-        mono: designTokens.typography.fontFamily.mono,
+        sans: designTokens.typography.fontFamily.sans as unknown as string[],
+        mono: designTokens.typography.fontFamily.mono as unknown as string[],
       },
       boxShadow: {
         sm: designTokens.shadows.sm.DEFAULT,
