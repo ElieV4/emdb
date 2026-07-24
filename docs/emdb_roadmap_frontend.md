@@ -920,6 +920,69 @@ emdb/
 
 ---
 
+## Design System & Charte graphique
+
+> **Source de vérité** : Toutes les valeurs de design sont définies dans [`apps/web/design-tokens.ts`](../apps/web/design-tokens.ts).  
+> **Document de référence** : Les choix de design détaillés et les points à trancher sont dans [`docs/frontend-design-choices.md`](./frontend-design-choices.md).
+
+### Intégration dans le projet
+
+Le fichier `design-tokens.ts` sera :
+1. **Consommé par `tailwind.config.js`** pour générer les classes utilitaires Tailwind avec les bonnes valeurs
+2. **Importé par les composants** pour accéder aux valeurs de design de manière typée
+3. **Utilisé par les composants shadcn/ui** via le theme CSS custom properties
+
+### Structure des tokens
+
+Les tokens sont organisés en catégories sémantiques :
+- **Colors** : Primary (rouge eMDB), secondary, accent, semantic (success/warning/danger), text, background, surface, border
+- **Typography** : Font families (Inter + JetBrains Mono), font sizes, weights, line heights, letter spacing
+- **Spacing** : Base 4px, échelle 4-80
+- **Border Radius** : 2px à 12px + full
+- **Shadows** : sm/md/lg/xl (désactivés sur dark mode, remplacés par des bordures)
+- **Breakpoints** : sm/md/lg/xl/2xl
+- **Transitions** : Durées (100-500ms), easings, presets (button/card/modal/toast)
+- **Z-Index** : Layers (base → toast)
+- **Ratings** : Échelle 0-10, 5 étoiles pleines, demi-étoiles
+- **Watch States** : Couleurs vu/en cours/non-vu, badge, check overlay
+- **Cards** : TitleCard (2:3), PersonCard (1:1), grid responsive
+- **Layout** : Max widths, header, sidebar, page padding
+- **Empty States** : Couleurs, icônes, CTA
+- **Dark Mode** : Default dark, transitions
+- **Accessibility** : Focus ring, touch targets, contrast ratios
+
+### Utilisation dans `tailwind.config.js`
+
+```javascript
+// tailwind.config.js
+import { designTokens } from '@/design-tokens';
+
+export default {
+  theme: {
+    extend: {
+      colors: {
+        primary: designTokens.colors.primary.DEFAULT,
+        'primary-hover': designTokens.colors.primary.hover,
+        // ... tous les tokens
+      },
+      fontFamily: {
+        sans: designTokens.typography.fontFamily.sans,
+        mono: designTokens.typography.fontFamily.mono,
+      },
+      borderRadius: designTokens.borderRadius,
+      boxShadow: designTokens.shadows,
+      spacing: designTokens.spacing,
+    },
+  },
+}
+```
+
+### Points de design à valider
+
+Les 13 points identifiés dans [`docs/frontend-design-choices.md`](./frontend-design-choices.md) doivent être tranchés avant/imminent le développement. Les valeurs par défaut dans `design-tokens.ts` sont basées sur **Trakt.tv avec primaire rouge** et peuvent être utilisées immédiatement.
+
+---
+
 ## Décisions à trancher (questions ouvertes)
 
 | # | Question | Options | Recommandation |
@@ -986,6 +1049,8 @@ emdb/
 | `docker-compose.yml` | Infra locale (postgres, redis, api, worker) |
 | `.env.example` | Variables d'environnement |
 | `apps/api/src/**` | Code API existant (patterns à suivre) |
+| `docs/frontend-design-choices.md` | Points de design à trancher et recommandations |
+| `apps/web/design-tokens.ts` | Charte graphique complète (couleurs, typographie, spacing, etc.) |
 
 ---
 
