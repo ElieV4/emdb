@@ -2,10 +2,10 @@ import { jest } from '@jest/globals';
 
 const prismaMock: any = {
   people: { upsert: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
-  titles: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn() },
+  titles: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn(), update: jest.fn() },
   title_recommendations: { createMany: jest.fn() },
-  seasons: { upsert: jest.fn() },
-  episodes: { upsert: jest.fn() },
+  seasons: { upsert: jest.fn(), findMany: jest.fn() },
+  episodes: { upsert: jest.fn(), findMany: jest.fn(), findFirst: jest.fn() },
   roles: { upsert: jest.fn() },
   credits: { create: jest.fn(), findMany: jest.fn() },
   genres: { upsert: jest.fn() },
@@ -14,6 +14,8 @@ const prismaMock: any = {
   title_countries: { createMany: jest.fn() },
   tmdb_sync_log: { create: jest.fn() },
   person_recommendations: { deleteMany: jest.fn(), createMany: jest.fn() },
+  user_follows_serie: { findMany: jest.fn() },
+  notifications: { findMany: jest.fn(), findFirst: jest.fn(), createMany: jest.fn() },
   $transaction: jest.fn(),
 };
 
@@ -60,6 +62,9 @@ const {
   bootstrapPersonRecommendationsFromTmdb,
   importTitleByTmdbId,
   importSeasonsForSerie,
+  dailySyncNewEpisodes,
+  generateNewEpisodeNotifications,
+  generateSeasonPremiereNotification,
 } = require('./index');
 
 const tmdbClient = require('@emdb/tmdb-client') as any;
@@ -110,19 +115,23 @@ describe('tmdb-sync', () => {
       nom: person.name,
       wiki_url: wikiUrl,
     }));
-    asMock(getWikipediaUrlFromWikidataId).mockResolvedValue('https://fr.wikipedia.org/wiki/Jean_Dupont');
+    asMock(getWikipediaUrlFromWikidataId).mockResolvedValue(
+      'https://fr.wikipedia.org/wiki/Jean_Dupont',
+    );
     asMock(prismaMock.people.upsert).mockResolvedValue({ id: 'person-uuid' });
 
     const person = await importPersonByTmdbId(1);
 
     expect(person).toEqual({ id: 'person-uuid' });
-    expect(prismaMock.people.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      where: { tmdb_id: 1 },
-      create: expect.objectContaining({
-        tmdb_id: 1,
-        nom: 'Jean Dupont',
+    expect(prismaMock.people.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tmdb_id: 1 },
+        create: expect.objectContaining({
+          tmdb_id: 1,
+          nom: 'Jean Dupont',
+        }),
       }),
-    }));
+    );
   });
 
   it('bootstrapRecommendationsFromTmdb créé des recommandations existantes', async () => {
@@ -178,8 +187,12 @@ describe('tmdb-sync', () => {
       vote_moyen: movie.vote_average,
       poster_url: movie.poster_path,
     }));
-    asMock(mapTmdbGenres).mockImplementation((genres: any) => genres.map((genre: any) => ({ tmdb_id: genre.id, nom: genre.name })));
-    asMock(mapTmdbCountries).mockImplementation((countries: any) => countries.map((country: any) => ({ code: country.iso_3166_1, nom: country.name })));
+    asMock(mapTmdbGenres).mockImplementation((genres: any) =>
+      genres.map((genre: any) => ({ tmdb_id: genre.id, nom: genre.name })),
+    );
+    asMock(mapTmdbCountries).mockImplementation((countries: any) =>
+      countries.map((country: any) => ({ code: country.iso_3166_1, nom: country.name })),
+    );
     asMock(mapTmdbCredits).mockImplementation((credits: any) => [
       {
         tmdb_person_id: credits.cast[0].id,
@@ -209,7 +222,11 @@ describe('tmdb-sync', () => {
   });
 
   it('importe une série TMDB et crée les saisons/épisodes', async () => {
-    asMock(prismaMock.titles.findUnique).mockResolvedValue({ id: 'serie-uuid', tmdb_id: 123, type: 'serie' });
+    asMock(prismaMock.titles.findUnique).mockResolvedValue({
+      id: 'serie-uuid',
+      tmdb_id: 123,
+      type: 'serie',
+    });
     asMock(getTvDetails).mockResolvedValue({ seasons: [{ season_number: 1 }] });
     asMock(getTvSeason).mockResolvedValue({
       season_number: 1,
@@ -249,18 +266,142 @@ describe('tmdb-sync', () => {
 
     await importSeasonsForSerie('serie-uuid');
 
-    expect(prismaMock.seasons.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({
-        title_id: 'serie-uuid',
-        numero: 1,
+    expect(prismaMock.seasons.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          title_id: 'serie-uuid',
+          numero: 1,
+        }),
       }),
-    }));
-    expect(prismaMock.episodes.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({
-        season_id: 'season-uuid',
-        numero: 1,
+    );
+    expect(prismaMock.episodes.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          season_id: 'season-uuid',
+          numero: 1,
+        }),
       }),
-    }));
+    );
+  });
+
+  describe('generateNewEpisodeNotifications', () => {
+    it('crée des notifications pour les followers quand un nouvel épisode sort', async () => {
+      asMock(prismaMock.titles.findMany).mockResolvedValue([
+        { id: 'serie-1', titre_vo: 'Serie 1' },
+      ]);
+      asMock(prismaMock.user_follows_serie.findMany).mockResolvedValue([{ user_id: 'user-1' }]);
+      asMock(prismaMock.episodes.findFirst).mockResolvedValue({
+        id: 'episode-latest',
+        numero: 5,
+        titre: 'Ep5',
+      });
+      asMock(prismaMock.notifications.findFirst).mockResolvedValue(null);
+      asMock(prismaMock.notifications.createMany).mockResolvedValue({ count: 1 });
+
+      const count = await generateNewEpisodeNotifications();
+
+      expect(count).toBe(1);
+      expect(prismaMock.notifications.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            user_id: 'user-1',
+            episode_id: 'episode-latest',
+            type: 'new_episode',
+            lu: false,
+          },
+        ],
+      });
+    });
+
+    it("ne crée pas de doublon si l'épisode est déjà notifié", async () => {
+      asMock(prismaMock.titles.findMany).mockResolvedValue([
+        { id: 'serie-1', titre_vo: 'Serie 1' },
+      ]);
+      asMock(prismaMock.user_follows_serie.findMany).mockResolvedValue([{ user_id: 'user-1' }]);
+      asMock(prismaMock.episodes.findFirst).mockResolvedValue({
+        id: 'episode-latest',
+      });
+      asMock(prismaMock.notifications.findFirst).mockResolvedValue({ id: 'notif-1' });
+
+      const count = await generateNewEpisodeNotifications();
+
+      expect(count).toBe(0);
+      expect(prismaMock.notifications.createMany).not.toHaveBeenCalled();
+    });
+
+    it('ignore les séries sans followers', async () => {
+      asMock(prismaMock.titles.findMany).mockResolvedValue([
+        { id: 'serie-no-followers', titre_vo: 'Serie sans followers' },
+      ]);
+      asMock(prismaMock.user_follows_serie.findMany).mockResolvedValue([]);
+
+      const count = await generateNewEpisodeNotifications();
+
+      expect(count).toBe(0);
+    });
+  });
+
+  describe('generateSeasonPremiereNotification', () => {
+    it('crée des notifications pour une première de saison', async () => {
+      asMock(prismaMock.user_follows_serie.findMany).mockResolvedValue([{ user_id: 'user-1' }]);
+      asMock(prismaMock.episodes.findFirst).mockResolvedValue({
+        id: 'episode-first',
+      });
+      asMock(prismaMock.notifications.findFirst).mockResolvedValue(null);
+      asMock(prismaMock.notifications.createMany).mockResolvedValue({ count: 1 });
+
+      const count = await generateSeasonPremiereNotification('title-1', 2);
+
+      expect(count).toBe(1);
+      expect(prismaMock.notifications.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            user_id: 'user-1',
+            episode_id: 'episode-first',
+            type: 'season_premiere',
+            lu: false,
+          },
+        ],
+      });
+    });
+
+    it('ne crée pas de doublon', async () => {
+      asMock(prismaMock.user_follows_serie.findMany).mockResolvedValue([{ user_id: 'user-1' }]);
+      asMock(prismaMock.episodes.findFirst).mockResolvedValue({
+        id: 'episode-first',
+      });
+      asMock(prismaMock.notifications.findFirst).mockResolvedValue({ id: 'notif-1' });
+
+      const count = await generateSeasonPremiereNotification('title-1', 2);
+
+      expect(count).toBe(0);
+      expect(prismaMock.notifications.createMany).not.toHaveBeenCalled();
+    });
+
+    it("retourne 0 si la saison n'a pas d'épisodes", async () => {
+      asMock(prismaMock.user_follows_serie.findMany).mockResolvedValue([{ user_id: 'user-1' }]);
+      asMock(prismaMock.episodes.findFirst).mockResolvedValue(null);
+
+      const count = await generateSeasonPremiereNotification('title-1', 2);
+
+      expect(count).toBe(0);
+    });
+  });
+
+  describe('dailySyncNewEpisodes', () => {
+    it('retourne le nombre de notifications créées', async () => {
+      asMock(prismaMock.titles.findMany).mockResolvedValue([{ id: 'title-1', tmdb_id: 1 }]);
+      asMock(prismaMock.notifications.findFirst).mockResolvedValue(null);
+      asMock(prismaMock.notifications.createMany).mockResolvedValue({ count: 2 });
+      asMock(prismaMock.user_follows_serie.findMany).mockResolvedValue([{ user_id: 'user-1' }]);
+      asMock(prismaMock.episodes.findFirst).mockResolvedValue({
+        id: 'episode-latest',
+      });
+
+      const result = (await dailySyncNewEpisodes()) as any;
+
+      expect(result.notificationsCreated).toBe(1);
+    });
   });
 
   describe('bootstrapPersonRecommendationsFromTmdb', () => {
@@ -301,13 +442,11 @@ describe('tmdb-sync', () => {
         where: { person_id: 'person-uuid' },
       });
       expect(prismaMock.person_recommendations.createMany).toHaveBeenCalledWith({
-        data: expect.arrayContaining([
-          expect.objectContaining({ person_id: 'person-uuid' }),
-        ]),
+        data: expect.arrayContaining([expect.objectContaining({ person_id: 'person-uuid' })]),
       });
     });
 
-    it('retourne 0 si la personne n\'a pas de tmdb_id', async () => {
+    it("retourne 0 si la personne n'a pas de tmdb_id", async () => {
       asMock(prismaMock.people.findUnique).mockResolvedValue({ id: 'person-uuid', tmdb_id: null });
 
       await expect(bootstrapPersonRecommendationsFromTmdb('person-uuid')).rejects.toThrow(

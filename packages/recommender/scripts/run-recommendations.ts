@@ -2,13 +2,13 @@
 /**
  * eMDB Recommender - CLI Script
  * Phase 5.1: Script exécutable pour le calcul des recommandations
- * 
+ *
  * Usage:
  *   npm run start -- --mode=all --batch=100
  *   npm run start -- --mode=titles --batch=50
  *   npm run start -- --mode=people
  *   npm run start -- --title-id=xxx
- * 
+ *
  * Options:
  *   --mode=all|titles|people   Mode de calcul (par défaut: all)
  *   --batch=N                Taille du batch pour les titres (par défaut: 100)
@@ -105,7 +105,7 @@ Notes:
 function printResultsTable(
   title: string,
   results: Array<{ id: string; score: number }>,
-  limit: number = 3
+  limit: number = 3,
 ): void {
   if (results.length === 0) {
     console.log(`\n${title}: aucune recommandation trouvée`);
@@ -119,7 +119,7 @@ function printResultsTable(
       rank: i + 1,
       recommended_id: r.id,
       score: r.score.toFixed(4),
-    }))
+    })),
   );
 }
 
@@ -177,7 +177,7 @@ async function main(): Promise<void> {
         const startTime = Date.now();
         const stats = await computeAllRecommendations(options.batch);
         const duration = Date.now() - startTime;
-        
+
         console.log(`\n✅ Calcul terminé en ${(duration / 1000).toFixed(2)} secondes`);
         console.log(`   - Titres: ${stats.titlesComputed} recommandations`);
         console.log(`   - Personnes: ${stats.peopleComputed} recommandations`);

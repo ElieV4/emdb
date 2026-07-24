@@ -18,4 +18,3 @@ export const CRON_QUEUE_NAME = 'tmdb-cron';
 export function buildRedisConnection(redisUrl: string): Redis {
   return new Redis(redisUrl);
 }
-

@@ -7,6 +7,7 @@ import {
   refreshTitleData,
   dailySyncNewEpisodes,
   weeklyResyncChanges,
+  generateNewEpisodeNotifications,
 } from '@emdb/tmdb-sync';
 
 export type ImportJobData =
@@ -17,7 +18,8 @@ export type ImportJobData =
 export type CronJobData =
   | { type: 'daily-sync-new-episodes' }
   | { type: 'weekly-resync-changes'; startDate?: string; endDate?: string }
-  | { type: 'refresh-materialized-views' };
+  | { type: 'refresh-materialized-views' }
+  | { type: 'generate-notifications' };
 
 export const IMPORT_QUEUE_NAME = 'tmdb-import';
 export const CRON_QUEUE_NAME = 'tmdb-cron';
@@ -141,8 +143,18 @@ export function createCronWorker(redisUrl: string) {
       const data = job.data as CronJobData;
 
       switch (data.type) {
-        case 'daily-sync-new-episodes':
-          return dailySyncNewEpisodes();
+        case 'daily-sync-new-episodes': {
+          const result = await dailySyncNewEpisodes();
+          console.log(
+            `Sync quotidien : ${result.titlesRefreshed} titres, ${result.notificationsCreated} notifications`,
+          );
+          return result;
+        }
+        case 'generate-notifications': {
+          const count = await generateNewEpisodeNotifications();
+          console.log(`Notifications générées : ${count}`);
+          return { notificationsCreated: count };
+        }
         case 'weekly-resync-changes': {
           const { startDate, endDate } = data;
           if (startDate && endDate) {

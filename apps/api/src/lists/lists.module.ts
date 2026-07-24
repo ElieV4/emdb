@@ -10,4 +10,3 @@ import { ListsService } from './lists.service';
   exports: [ListsService],
 })
 export class ListsModule {}
-

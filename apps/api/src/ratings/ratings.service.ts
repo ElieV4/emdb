@@ -133,9 +133,7 @@ export class RatingsService {
 
     // Validation : soit title_id, soit episode_id, pas les deux, pas aucun
     if (!title_id && !episode_id) {
-      throw new BadRequestException(
-        "Vous devez fournir 'title_id' ou 'episode_id'.",
-      );
+      throw new BadRequestException("Vous devez fournir 'title_id' ou 'episode_id'.");
     }
 
     if (title_id && episode_id) {
@@ -146,9 +144,7 @@ export class RatingsService {
 
     // Au moins un champ optionnel doit être présent
     if (note_perso === undefined && commentaire === undefined) {
-      throw new BadRequestException(
-        "Vous devez fournir au moins 'note_perso' ou 'commentaire'.",
-      );
+      throw new BadRequestException("Vous devez fournir au moins 'note_perso' ou 'commentaire'.");
     }
 
     // Vérifier que le titre ou l'épisode existe
@@ -262,7 +258,7 @@ export class RatingsService {
     }
 
     if (rating.user_id !== userId) {
-      throw new ForbiddenException("Cette note ne vous appartient pas.");
+      throw new ForbiddenException('Cette note ne vous appartient pas.');
     }
 
     await this.prisma.user_ratings.delete({ where: { id } });
@@ -281,10 +277,7 @@ export class RatingsService {
    * @param filters - Filtres et pagination
    * @returns Liste paginée des notes
    */
-  async listUserRatings(
-    userId: string,
-    filters: ListRatingsFilterDto,
-  ): Promise<PaginatedRatings> {
+  async listUserRatings(userId: string, filters: ListRatingsFilterDto): Promise<PaginatedRatings> {
     const page = filters.page ?? 1;
     const limit = filters.limit ?? 20;
     const skip = (page - 1) * limit;
@@ -328,9 +321,7 @@ export class RatingsService {
       this.prisma.user_ratings.count({ where }),
     ]);
 
-    const data = (rawData as unknown as RawRating[]).map((r) =>
-      this.formatRating(r),
-    );
+    const data = (rawData as unknown as RawRating[]).map((r) => this.formatRating(r));
 
     return { data, total, page, limit };
   }
@@ -378,10 +369,7 @@ export class RatingsService {
     }
 
     // Calculer la moyenne
-    const sum = ratings.reduce(
-      (acc, r) => acc + Number(r.note_perso),
-      0,
-    );
+    const sum = ratings.reduce((acc, r) => acc + Number(r.note_perso), 0);
     const moyenne = parseFloat((sum / count).toFixed(1));
 
     // Calculer la répartition (1-10)
@@ -412,4 +400,3 @@ export class RatingsService {
     return rep;
   }
 }
-

@@ -1,8 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ListsService } from './lists.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -42,10 +39,7 @@ describe('ListsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        ListsService,
-        { provide: PrismaService, useValue: prismaServiceMock },
-      ],
+      providers: [ListsService, { provide: PrismaService, useValue: prismaServiceMock }],
     }).compile();
 
     service = module.get<ListsService>(ListsService);
@@ -163,7 +157,7 @@ describe('ListsService', () => {
   // getUserLists
   // ======================================================================
   describe('getUserLists', () => {
-    it('retourne les listes de l\'utilisateur', async () => {
+    it("retourne les listes de l'utilisateur", async () => {
       const lists = [
         buildList({ id: 'list-1', nom: 'Liste 1' }),
         buildList({ id: 'list-2', nom: 'Liste 2' }),
@@ -194,9 +188,7 @@ describe('ListsService', () => {
   // ======================================================================
   describe('getListDetail', () => {
     it('retourne la liste avec ses items si propriétaire', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
       prismaServiceMock.list_items.findMany.mockResolvedValue([
         buildListItem({ position: 0 }),
         buildListItem({ title_id: 'title-2', position: 1 }),
@@ -239,23 +231,19 @@ describe('ListsService', () => {
       expect(result.id).toBe(listId);
     });
 
-    it('lève NotFound si la liste n\'existe pas', async () => {
+    it("lève NotFound si la liste n'existe pas", async () => {
       prismaServiceMock.user_lists.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.getListDetail('nonexistent', userId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.getListDetail('nonexistent', userId)).rejects.toThrow(NotFoundException);
     });
 
-    it("lève Forbidden si non propriétaire et non partagée", async () => {
+    it('lève Forbidden si non propriétaire et non partagée', async () => {
       prismaServiceMock.user_lists.findUnique.mockResolvedValue(
         buildList({ user_id: 'other-user' }),
       );
       prismaServiceMock.list_shares.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.getListDetail(listId, userId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.getListDetail(listId, userId)).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -264,12 +252,8 @@ describe('ListsService', () => {
   // ======================================================================
   describe('updateList', () => {
     it('met à jour le nom si propriétaire', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
-      prismaServiceMock.user_lists.update.mockResolvedValue(
-        buildList({ nom: 'Nouveau nom' }),
-      );
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
+      prismaServiceMock.user_lists.update.mockResolvedValue(buildList({ nom: 'Nouveau nom' }));
 
       const result = await service.updateList(listId, userId, {
         nom: 'Nouveau nom',
@@ -283,9 +267,7 @@ describe('ListsService', () => {
     });
 
     it('met à jour la description si propriétaire', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
       prismaServiceMock.user_lists.update.mockResolvedValue(
         buildList({ description: 'Nouvelle description' }),
       );
@@ -302,9 +284,9 @@ describe('ListsService', () => {
         buildList({ user_id: 'other-user' }),
       );
 
-      await expect(
-        service.updateList(listId, userId, { nom: 'Nouveau nom' }),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.updateList(listId, userId, { nom: 'Nouveau nom' })).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -313,9 +295,7 @@ describe('ListsService', () => {
   // ======================================================================
   describe('deleteList', () => {
     it('supprime la liste si propriétaire', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
       prismaServiceMock.user_lists.delete.mockResolvedValue({});
 
       await service.deleteList(listId, userId);
@@ -330,17 +310,13 @@ describe('ListsService', () => {
         buildList({ user_id: 'other-user' }),
       );
 
-      await expect(
-        service.deleteList(listId, userId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.deleteList(listId, userId)).rejects.toThrow(ForbiddenException);
     });
 
     it("lève NotFound si la liste n'existe pas", async () => {
       prismaServiceMock.user_lists.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.deleteList('nonexistent', userId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.deleteList('nonexistent', userId)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -349,16 +325,12 @@ describe('ListsService', () => {
   // ======================================================================
   describe('addItem', () => {
     it('ajoute un item avec la bonne position (max+1)', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
       prismaServiceMock.titles.findUnique.mockResolvedValue({ id: titleId });
       prismaServiceMock.list_items.findFirst.mockResolvedValue({
         position: 5,
       });
-      prismaServiceMock.list_items.create.mockResolvedValue(
-        buildListItem({ position: 6 }),
-      );
+      prismaServiceMock.list_items.create.mockResolvedValue(buildListItem({ position: 6 }));
 
       const result = await service.addItem(listId, userId, titleId);
 
@@ -371,14 +343,10 @@ describe('ListsService', () => {
     });
 
     it('ajoute le premier item (position=0)', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
       prismaServiceMock.titles.findUnique.mockResolvedValue({ id: titleId });
       prismaServiceMock.list_items.findFirst.mockResolvedValue(null);
-      prismaServiceMock.list_items.create.mockResolvedValue(
-        buildListItem({ position: 0 }),
-      );
+      prismaServiceMock.list_items.create.mockResolvedValue(buildListItem({ position: 0 }));
 
       const result = await service.addItem(listId, userId, titleId);
 
@@ -393,20 +361,18 @@ describe('ListsService', () => {
         buildShare({ permission: 'lecture' }),
       );
 
-      await expect(
-        service.addItem(listId, sharedWithUserId, titleId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.addItem(listId, sharedWithUserId, titleId)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
-    it('lève NotFound si le titre n\'existe pas', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
+    it("lève NotFound si le titre n'existe pas", async () => {
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
       prismaServiceMock.titles.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.addItem(listId, userId, 'nonexistent-title'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.addItem(listId, userId, 'nonexistent-title')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -415,12 +381,8 @@ describe('ListsService', () => {
   // ======================================================================
   describe('removeItem', () => {
     it('retire un item existant', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
-      prismaServiceMock.list_items.findUnique.mockResolvedValue(
-        buildListItem({}),
-      );
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
+      prismaServiceMock.list_items.findUnique.mockResolvedValue(buildListItem({}));
       prismaServiceMock.list_items.delete.mockResolvedValue({});
 
       await service.removeItem(listId, userId, titleId);
@@ -433,14 +395,12 @@ describe('ListsService', () => {
     });
 
     it("lève NotFound si l'item n'existe pas dans la liste", async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
       prismaServiceMock.list_items.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.removeItem(listId, userId, 'nonexistent-title'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.removeItem(listId, userId, 'nonexistent-title')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -449,9 +409,7 @@ describe('ListsService', () => {
   // ======================================================================
   describe('reorderItems', () => {
     it('met à jour les positions dans une transaction', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
       prismaServiceMock.list_items.findMany.mockResolvedValue([
         { title_id: 'title-1' },
         { title_id: 'title-2' },
@@ -499,12 +457,8 @@ describe('ListsService', () => {
     });
 
     it("lève NotFound si un title_id n'appartient pas à la liste", async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
-      prismaServiceMock.list_items.findMany.mockResolvedValue([
-        { title_id: 'title-1' },
-      ]);
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
+      prismaServiceMock.list_items.findMany.mockResolvedValue([{ title_id: 'title-1' }]);
 
       await expect(
         service.reorderItems(listId, userId, {
@@ -522,15 +476,11 @@ describe('ListsService', () => {
   // ======================================================================
   describe('shareList', () => {
     it('ajoute un partage', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
       prismaServiceMock.users.findUnique.mockResolvedValue({
         id: sharedWithUserId,
       });
-      prismaServiceMock.list_shares.create.mockResolvedValue(
-        buildShare({ permission: 'edition' }),
-      );
+      prismaServiceMock.list_shares.create.mockResolvedValue(buildShare({ permission: 'edition' }));
 
       const result = await service.shareList(listId, userId, {
         shared_with_user_id: sharedWithUserId,
@@ -550,10 +500,8 @@ describe('ListsService', () => {
       });
     });
 
-    it('lève NotFound si shared_with_user_id n\'existe pas', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
+    it("lève NotFound si shared_with_user_id n'existe pas", async () => {
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
       prismaServiceMock.users.findUnique.mockResolvedValue(null);
 
       await expect(
@@ -583,9 +531,7 @@ describe('ListsService', () => {
   // ======================================================================
   describe('getShares', () => {
     it('liste les partages si propriétaire', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
       const shares = [
         buildShare({ shared_with_user_id: 'user-2' }),
         buildShare({ shared_with_user_id: 'user-3' }),
@@ -609,9 +555,7 @@ describe('ListsService', () => {
         buildList({ user_id: 'other-user' }),
       );
 
-      await expect(
-        service.getShares(listId, userId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.getShares(listId, userId)).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -620,12 +564,8 @@ describe('ListsService', () => {
   // ======================================================================
   describe('removeShare', () => {
     it('retire un partage si propriétaire', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
-      prismaServiceMock.list_shares.findUnique.mockResolvedValue(
-        buildShare({}),
-      );
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
+      prismaServiceMock.list_shares.findUnique.mockResolvedValue(buildShare({}));
       prismaServiceMock.list_shares.delete.mockResolvedValue({});
 
       await service.removeShare(listId, userId, sharedWithUserId);
@@ -640,15 +580,13 @@ describe('ListsService', () => {
       });
     });
 
-    it('lève NotFound si le partage n\'existe pas', async () => {
-      prismaServiceMock.user_lists.findUnique.mockResolvedValue(
-        buildList({ user_id: userId }),
-      );
+    it("lève NotFound si le partage n'existe pas", async () => {
+      prismaServiceMock.user_lists.findUnique.mockResolvedValue(buildList({ user_id: userId }));
       prismaServiceMock.list_shares.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.removeShare(listId, userId, sharedWithUserId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.removeShare(listId, userId, sharedWithUserId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('lève Forbidden si non propriétaire', async () => {
@@ -656,9 +594,9 @@ describe('ListsService', () => {
         buildList({ user_id: 'other-user' }),
       );
 
-      await expect(
-        service.removeShare(listId, userId, sharedWithUserId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.removeShare(listId, userId, sharedWithUserId)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -666,7 +604,7 @@ describe('ListsService', () => {
   // getSharedLists
   // ======================================================================
   describe('getSharedLists', () => {
-    it('retourne les listes partagées avec l\'utilisateur', async () => {
+    it("retourne les listes partagées avec l'utilisateur", async () => {
       const shares = [
         {
           list_id: listId,
@@ -702,4 +640,3 @@ describe('ListsService', () => {
     });
   });
 });
-

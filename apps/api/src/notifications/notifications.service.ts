@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListNotificationsFilterDto } from './dto/list-notifications-filter.dto';
 
@@ -53,10 +49,7 @@ export class NotificationsService {
             },
           },
         },
-        orderBy: [
-          { lu: 'asc' },
-          { created_at: 'desc' },
-        ],
+        orderBy: [{ lu: 'asc' }, { created_at: 'desc' }],
         skip,
         take: limit,
       }),

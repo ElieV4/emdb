@@ -14,7 +14,11 @@ jest.mock('@emdb/tmdb-sync', () => ({
 }));
 
 import { searchPerson } from '@emdb/tmdb-client';
-import { importPersonByTmdbId, refreshPersonData, bootstrapPersonRecommendationsFromTmdb } from '@emdb/tmdb-sync';
+import {
+  importPersonByTmdbId,
+  refreshPersonData,
+  bootstrapPersonRecommendationsFromTmdb,
+} from '@emdb/tmdb-sync';
 
 const prismaServiceMock = {
   people: {
@@ -317,14 +321,16 @@ describe('PeopleService', () => {
       prismaServiceMock.people.findUnique.mockResolvedValue({ id: 'person-1', tmdb_id: 12345 });
       prismaServiceMock.person_recommendations.findMany.mockResolvedValue([]);
 
-      (bootstrapPersonRecommendationsFromTmdb as jest.Mock).mockRejectedValue(new Error('TMDB error'));
+      (bootstrapPersonRecommendationsFromTmdb as jest.Mock).mockRejectedValue(
+        new Error('TMDB error'),
+      );
 
       const result = await service.getRecommendations('person-1');
 
       expect(result).toEqual([]);
     });
 
-    it('lève NotFoundException si la personne n\'existe pas', async () => {
+    it("lève NotFoundException si la personne n'existe pas", async () => {
       prismaServiceMock.people.findUnique.mockResolvedValue(null);
 
       await expect(service.getRecommendations('nonexistent')).rejects.toThrow(NotFoundException);

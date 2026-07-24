@@ -674,7 +674,7 @@ Toutes les vues sont rafraîchies **toutes les 3 heures** via worker avec `REFRE
 | 4 | Fonctionnalités utilisateur | ✅ | watches, ratings, lists, follows |
 | 5 | Recommandations (algorithme maison) | ✅ | recommender (5.1), admin + worker (5.2), fallback (5.3) |
 | 6 | Dataviz (vues matérialisées) | ✅ | dataviz, admin |
-| **7** | **Notifications** | ❌ | **notifications (7.1), tmdb-sync + worker (7.2), worker (7.3)** |
+| **7** | **Notifications** | 🔄 | **notifications (7.1 ✅), tmdb-sync + worker (7.2 ✅), worker (7.3 ⏳)** |
 
 ---
 

@@ -18,10 +18,7 @@ describe('NotificationsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        NotificationsService,
-        { provide: PrismaService, useValue: prismaServiceMock },
-      ],
+      providers: [NotificationsService, { provide: PrismaService, useValue: prismaServiceMock }],
     }).compile();
 
     service = module.get<NotificationsService>(NotificationsService);
@@ -129,9 +126,7 @@ describe('NotificationsService', () => {
     it("lève NotFoundException si la notification n'existe pas", async () => {
       prismaServiceMock.notifications.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.markAsRead('nonexistent', userId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.markAsRead('nonexistent', userId)).rejects.toThrow(NotFoundException);
     });
 
     it('lève ForbiddenException si la notification appartient à un autre user', async () => {
@@ -141,9 +136,7 @@ describe('NotificationsService', () => {
         lu: false,
       });
 
-      await expect(
-        service.markAsRead(notificationId, userId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.markAsRead(notificationId, userId)).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -151,7 +144,7 @@ describe('NotificationsService', () => {
   // markAllAsRead
   // ======================================================================
   describe('markAllAsRead', () => {
-    it('marque toutes les notifications de l\'utilisateur comme lues', async () => {
+    it("marque toutes les notifications de l'utilisateur comme lues", async () => {
       prismaServiceMock.notifications.updateMany.mockResolvedValue({ count: 3 });
 
       const result = await service.markAllAsRead(userId);

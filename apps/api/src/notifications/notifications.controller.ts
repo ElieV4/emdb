@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { NotificationsService } from './notifications.service';
@@ -34,10 +27,7 @@ export class NotificationsController {
    * Liste paginée des notifications (non lues en priorité).
    */
   @Get()
-  async listNotifications(
-    @CurrentUser() user: any,
-    @Query() filters: ListNotificationsFilterDto,
-  ) {
+  async listNotifications(@CurrentUser() user: any, @Query() filters: ListNotificationsFilterDto) {
     return this.notificationsService.listNotifications(user.id, filters);
   }
 
@@ -71,9 +61,7 @@ export class NotificationsController {
    * Compteur de notifications non lues.
    */
   @Get('unread-count')
-  async getUnreadCount(
-    @CurrentUser() user: any,
-  ): Promise<{ count: number }> {
+  async getUnreadCount(@CurrentUser() user: any): Promise<{ count: number }> {
     return this.notificationsService.getUnreadCount(user.id);
   }
 }

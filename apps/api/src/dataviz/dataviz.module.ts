@@ -10,4 +10,3 @@ import { DatavizService } from './dataviz.service';
   exports: [DatavizService],
 })
 export class DatavizModule {}
-

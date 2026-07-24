@@ -24,4 +24,3 @@ import { AdminGuard } from './admin.guard';
   exports: [AdminService],
 })
 export class AdminModule {}
-

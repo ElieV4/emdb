@@ -37,10 +37,7 @@ describe('WatchesService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        WatchesService,
-        { provide: PrismaService, useValue: prismaServiceMock },
-      ],
+      providers: [WatchesService, { provide: PrismaService, useValue: prismaServiceMock }],
     }).compile();
 
     service = module.get<WatchesService>(WatchesService);
@@ -333,16 +330,26 @@ describe('WatchesService', () => {
       prismaServiceMock.user_follows_serie.findMany.mockResolvedValue([
         {
           title_id: 'serie-1',
-          titles: { id: 'serie-1', titre_vo: 'Serie 1', titre_vf: null, affiche_url: null, next_episode_air_date: null },
+          titles: {
+            id: 'serie-1',
+            titre_vo: 'Serie 1',
+            titre_vf: null,
+            affiche_url: null,
+            next_episode_air_date: null,
+          },
         },
         {
           title_id: 'serie-2',
-          titles: { id: 'serie-2', titre_vo: 'Serie 2', titre_vf: null, affiche_url: null, next_episode_air_date: null },
+          titles: {
+            id: 'serie-2',
+            titre_vo: 'Serie 2',
+            titre_vf: null,
+            affiche_url: null,
+            next_episode_air_date: null,
+          },
         },
       ]);
-      (countEpisodesNonVus as jest.Mock)
-        .mockResolvedValueOnce(3)
-        .mockResolvedValueOnce(10);
+      (countEpisodesNonVus as jest.Mock).mockResolvedValueOnce(3).mockResolvedValueOnce(10);
 
       const result = await service.getCalendar(userId);
 

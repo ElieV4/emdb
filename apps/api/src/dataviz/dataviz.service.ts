@@ -283,4 +283,3 @@ export class DatavizService {
     return results || [];
   }
 }
-

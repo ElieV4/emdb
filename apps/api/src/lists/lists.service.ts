@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateListDto } from './dto/create-list.dto';
 import { UpdateListDto } from './dto/update-list.dto';
@@ -41,7 +37,14 @@ export class ListsService {
   private async findListOrThrow(listId: string) {
     const list = await this.prisma.user_lists.findUnique({
       where: { id: listId },
-      select: { id: true, user_id: true, nom: true, type: true, description: true, created_at: true },
+      select: {
+        id: true,
+        user_id: true,
+        nom: true,
+        type: true,
+        description: true,
+        created_at: true,
+      },
     });
 
     if (!list) {
@@ -531,4 +534,3 @@ export class ListsService {
     }));
   }
 }
-

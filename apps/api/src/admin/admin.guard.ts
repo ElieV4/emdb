@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Observable } from 'rxjs';
 
@@ -24,16 +19,12 @@ import { Observable } from 'rxjs';
 export class AdminGuard implements CanActivate {
   constructor(private readonly configService: ConfigService) {}
 
-  canActivate(
-    context: ExecutionContext,
-  ): boolean | Promise<boolean> | Observable<boolean> {
+  canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
     if (!user || !user.email) {
-      throw new UnauthorizedException(
-        'Authentification requise pour accéder à cette ressource.',
-      );
+      throw new UnauthorizedException('Authentification requise pour accéder à cette ressource.');
     }
 
     const adminEmailsEnv = this.configService.get<string>('ADMIN_EMAILS', '');
@@ -50,12 +41,9 @@ export class AdminGuard implements CanActivate {
     }
 
     if (!adminEmails.includes(user.email.toLowerCase())) {
-      throw new UnauthorizedException(
-        'Accès réservé aux administrateurs.',
-      );
+      throw new UnauthorizedException('Accès réservé aux administrateurs.');
     }
 
     return true;
   }
 }
-

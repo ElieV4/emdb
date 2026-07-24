@@ -26,8 +26,7 @@ export class AdminService {
    */
   private getCronQueue(): Queue {
     if (!this.cronQueue) {
-      const redisUrl =
-        this.configService.get<string>('REDIS_URL') ?? 'redis://localhost:6379';
+      const redisUrl = this.configService.get<string>('REDIS_URL') ?? 'redis://localhost:6379';
       const connection = buildRedisConnection(redisUrl);
       this.cronQueue = new Queue(CRON_QUEUE_NAME, { connection });
     }
@@ -47,9 +46,7 @@ export class AdminService {
   }> {
     const queue = this.getCronQueue();
 
-    this.logger.log(
-      'Ajout d’un job refresh-materialized-views à la queue tmdb-cron',
-    );
+    this.logger.log('Ajout d’un job refresh-materialized-views à la queue tmdb-cron');
 
     const job = await queue.add(
       'refresh-materialized-views',
@@ -74,4 +71,3 @@ export class AdminService {
     };
   }
 }
-

@@ -15,9 +15,7 @@ describe('tmdb-mapper', () => {
           { id: 11, name: 'Réalisateur', job: 'Director', department: 'Directing' },
           { id: 12, name: 'Scénariste', job: 'Writer', department: 'Writing' },
         ],
-        guest_stars: [
-          { id: 21, name: 'Acteur invité', character: 'Personnage', order: 1 },
-        ],
+        guest_stars: [{ id: 21, name: 'Acteur invité', character: 'Personnage', order: 1 }],
       },
       episodeId,
     );
@@ -47,9 +45,10 @@ describe('tmdb-mapper', () => {
   });
 
   it('extrait le wikidata_id depuis les external ids TMDB', () => {
-    expect(
-      mapTmdbPersonExternalIds({ imdb_id: 'nm0000001', wikidata_id: 'Q12345' }),
-    ).toEqual({ imdb_id: 'nm0000001', wikidata_id: 'Q12345' });
+    expect(mapTmdbPersonExternalIds({ imdb_id: 'nm0000001', wikidata_id: 'Q12345' })).toEqual({
+      imdb_id: 'nm0000001',
+      wikidata_id: 'Q12345',
+    });
   });
 
   it('mappe un film TMDB en payload title', () => {

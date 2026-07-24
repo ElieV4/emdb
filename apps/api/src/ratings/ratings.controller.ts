@@ -35,10 +35,7 @@ export class RatingsController {
    */
   @UseGuards(JwtAuthGuard)
   @Put('ratings')
-  async upsertRating(
-    @CurrentUser() user: any,
-    @Body() dto: UpsertRatingDto,
-  ) {
+  async upsertRating(@CurrentUser() user: any, @Body() dto: UpsertRatingDto) {
     return this.ratingsService.upsertRating(user.id, dto);
   }
 
@@ -49,10 +46,7 @@ export class RatingsController {
   @UseGuards(JwtAuthGuard)
   @Delete('ratings/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteRating(
-    @CurrentUser() user: any,
-    @Param('id') id: string,
-  ): Promise<void> {
+  async deleteRating(@CurrentUser() user: any, @Param('id') id: string): Promise<void> {
     await this.ratingsService.deleteRating(id, user.id);
   }
 
@@ -62,10 +56,7 @@ export class RatingsController {
    */
   @UseGuards(JwtAuthGuard)
   @Get('ratings')
-  async listUserRatings(
-    @CurrentUser() user: any,
-    @Query() filters: ListRatingsFilterDto,
-  ) {
+  async listUserRatings(@CurrentUser() user: any, @Query() filters: ListRatingsFilterDto) {
     return this.ratingsService.listUserRatings(user.id, filters);
   }
 
@@ -79,4 +70,3 @@ export class RatingsController {
     return this.ratingsService.getTitleRatingsSummary(id);
   }
 }
-

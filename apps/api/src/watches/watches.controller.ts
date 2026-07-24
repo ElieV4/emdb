@@ -42,10 +42,7 @@ export class WatchesController {
    * Marque un titre ou un épisode comme vu.
    */
   @Post('watches')
-  async createWatch(
-    @CurrentUser() user: any,
-    @Body() dto: CreateWatchDto,
-  ) {
+  async createWatch(@CurrentUser() user: any, @Body() dto: CreateWatchDto) {
     return this.watchesService.createWatch(user.id, dto);
   }
 
@@ -55,10 +52,7 @@ export class WatchesController {
    */
   @Delete('watches/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteWatch(
-    @CurrentUser() user: any,
-    @Param('id') id: string,
-  ): Promise<void> {
+  async deleteWatch(@CurrentUser() user: any, @Param('id') id: string): Promise<void> {
     await this.watchesService.deleteWatch(id, user.id);
   }
 
@@ -67,10 +61,7 @@ export class WatchesController {
    * Liste paginée des visionnages avec filtres optionnels.
    */
   @Get('watches')
-  async listWatches(
-    @CurrentUser() user: any,
-    @Query() filters: ListWatchesFilterDto,
-  ) {
+  async listWatches(@CurrentUser() user: any, @Query() filters: ListWatchesFilterDto) {
     return this.watchesService.listWatches(user.id, filters);
   }
 
@@ -79,10 +70,7 @@ export class WatchesController {
    * Progression de visionnage par saison pour une série.
    */
   @Get('titles/:titleId/progress')
-  async getSerieProgress(
-    @CurrentUser() user: any,
-    @Param('titleId') titleId: string,
-  ) {
+  async getSerieProgress(@CurrentUser() user: any, @Param('titleId') titleId: string) {
     return this.watchesService.getSerieProgress(user.id, titleId);
   }
 
@@ -100,10 +88,7 @@ export class WatchesController {
    * Suivre une série.
    */
   @Post('follows')
-  async follow(
-    @CurrentUser() user: any,
-    @Body() dto: FollowSerieDto,
-  ) {
+  async follow(@CurrentUser() user: any, @Body() dto: FollowSerieDto) {
     return this.watchesService.follow(user.id, dto.title_id);
   }
 
@@ -113,10 +98,7 @@ export class WatchesController {
    */
   @Delete('follows/:titleId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async unfollow(
-    @CurrentUser() user: any,
-    @Param('titleId') titleId: string,
-  ): Promise<void> {
+  async unfollow(@CurrentUser() user: any, @Param('titleId') titleId: string): Promise<void> {
     await this.watchesService.unfollow(user.id, titleId);
   }
 

@@ -8,7 +8,7 @@
     "target": "ES2022",
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "baseUrl": "./",
     "types": ["node", "jest", "multer"],
     "incremental": true,

@@ -11,4 +11,3 @@ export class AddItemDto {
   @IsNotEmpty()
   title_id!: string;
 }
-

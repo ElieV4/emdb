@@ -4,18 +4,21 @@ describe('wikidata-client', () => {
   const originalFetch = globalThis.fetch;
 
   beforeAll(() => {
-    globalThis.fetch = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
-        entities: {
-          Q12345: {
-            sitelinks: {
-              frwiki: { url: 'https://fr.wikipedia.org/wiki/Test' },
+    globalThis.fetch = jest.fn(
+      async () =>
+        ({
+          ok: true,
+          json: async () => ({
+            entities: {
+              Q12345: {
+                sitelinks: {
+                  frwiki: { url: 'https://fr.wikipedia.org/wiki/Test' },
+                },
+              },
             },
-          },
-        },
-      }),
-    } as any));
+          }),
+        }) as any,
+    );
   });
 
   afterAll(() => {

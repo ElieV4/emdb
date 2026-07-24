@@ -28,18 +28,43 @@ const configurationResponse = {
 };
 
 const server = setupServer(
-  rest.get(`${TMDB_BASE_URL}/configuration`, (_req, res, ctx) => res(ctx.status(200), ctx.json(configurationResponse))),
-  rest.get(`${TMDB_BASE_URL}/search/person`, (_req, res, ctx) => res(ctx.status(200), ctx.json({ results: [] }))),
-  rest.get(`${TMDB_BASE_URL}/search/multi`, (_req, res, ctx) => res(ctx.status(200), ctx.json({ results: [] }))),
-  rest.get(`${TMDB_BASE_URL}/movie/:id/recommendations`, (_req, res, ctx) => res(ctx.status(200), ctx.json({ results: [] }))),
-  rest.get(`${TMDB_BASE_URL}/discover/movie`, (_req, res, ctx) => res(ctx.status(200), ctx.json({ results: [] }))),
-  rest.get(`${TMDB_BASE_URL}/movie/changes`, (_req, res, ctx) => res(ctx.status(200), ctx.json({ results: [] }))),
-  rest.get(`${TMDB_BASE_URL}/tv/changes`, (_req, res, ctx) => res(ctx.status(200), ctx.json({ results: [] }))),
-  rest.get(`${TMDB_BASE_URL}/trending/:mediaType/:timeWindow`, (_req, res, ctx) => res(ctx.status(200), ctx.json({ results: [] }))),
-  rest.get(`${TMDB_BASE_URL}/tv/:id/season/:seasonNumber/episode/:episodeNumber`, (_req, res, ctx) => res(ctx.status(200), ctx.json({ id: 123 }))),
-  rest.get(`${TMDB_BASE_URL}/tv/:id/external_ids`, (_req, res, ctx) => res(ctx.status(200), ctx.json({}))),
-  rest.get(`${TMDB_BASE_URL}/person/:id/external_ids`, (_req, res, ctx) => res(ctx.status(200), ctx.json({}))),
-  rest.get(`${TMDB_BASE_URL}/:path*`, (_req, res, ctx) => res(ctx.status(200), ctx.json({ results: [] }))),
+  rest.get(`${TMDB_BASE_URL}/configuration`, (_req, res, ctx) =>
+    res(ctx.status(200), ctx.json(configurationResponse)),
+  ),
+  rest.get(`${TMDB_BASE_URL}/search/person`, (_req, res, ctx) =>
+    res(ctx.status(200), ctx.json({ results: [] })),
+  ),
+  rest.get(`${TMDB_BASE_URL}/search/multi`, (_req, res, ctx) =>
+    res(ctx.status(200), ctx.json({ results: [] })),
+  ),
+  rest.get(`${TMDB_BASE_URL}/movie/:id/recommendations`, (_req, res, ctx) =>
+    res(ctx.status(200), ctx.json({ results: [] })),
+  ),
+  rest.get(`${TMDB_BASE_URL}/discover/movie`, (_req, res, ctx) =>
+    res(ctx.status(200), ctx.json({ results: [] })),
+  ),
+  rest.get(`${TMDB_BASE_URL}/movie/changes`, (_req, res, ctx) =>
+    res(ctx.status(200), ctx.json({ results: [] })),
+  ),
+  rest.get(`${TMDB_BASE_URL}/tv/changes`, (_req, res, ctx) =>
+    res(ctx.status(200), ctx.json({ results: [] })),
+  ),
+  rest.get(`${TMDB_BASE_URL}/trending/:mediaType/:timeWindow`, (_req, res, ctx) =>
+    res(ctx.status(200), ctx.json({ results: [] })),
+  ),
+  rest.get(
+    `${TMDB_BASE_URL}/tv/:id/season/:seasonNumber/episode/:episodeNumber`,
+    (_req, res, ctx) => res(ctx.status(200), ctx.json({ id: 123 })),
+  ),
+  rest.get(`${TMDB_BASE_URL}/tv/:id/external_ids`, (_req, res, ctx) =>
+    res(ctx.status(200), ctx.json({})),
+  ),
+  rest.get(`${TMDB_BASE_URL}/person/:id/external_ids`, (_req, res, ctx) =>
+    res(ctx.status(200), ctx.json({})),
+  ),
+  rest.get(`${TMDB_BASE_URL}/:path*`, (_req, res, ctx) =>
+    res(ctx.status(200), ctx.json({ results: [] })),
+  ),
 );
 
 describe('tmdbClient', () => {

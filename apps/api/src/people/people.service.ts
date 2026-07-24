@@ -1,7 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { searchPerson, TmdbSearchResult } from '@emdb/tmdb-client';
-import { importPersonByTmdbId, refreshPersonData, bootstrapPersonRecommendationsFromTmdb } from '@emdb/tmdb-sync';
+import {
+  importPersonByTmdbId,
+  refreshPersonData,
+  bootstrapPersonRecommendationsFromTmdb,
+} from '@emdb/tmdb-sync';
 
 /**
  * Interface pour le résultat fusionné d'une recherche TMDB + local.

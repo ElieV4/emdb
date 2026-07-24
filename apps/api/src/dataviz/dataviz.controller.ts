@@ -28,10 +28,7 @@ export class DatavizController {
    * @returns Tableau de résultats
    */
   @Get('watch-time')
-  async getWatchTime(
-    @Query() query: WatchTimeQueryDto,
-    @CurrentUser() user: any,
-  ) {
+  async getWatchTime(@Query() query: WatchTimeQueryDto, @CurrentUser() user: any) {
     return this.datavizService.getWatchTime(user.id, query);
   }
 
@@ -44,11 +41,7 @@ export class DatavizController {
    * @returns Tableau de résultats
    */
   @Get('watch-count')
-  async getWatchCount(
-    @Query() query: WatchCountQueryDto,
-    @CurrentUser() user: any,
-  ) {
+  async getWatchCount(@Query() query: WatchCountQueryDto, @CurrentUser() user: any) {
     return this.datavizService.getWatchCount(user.id, query);
   }
 }
-

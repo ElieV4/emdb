@@ -1,9 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { RatingsService } from './ratings.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -29,10 +25,7 @@ describe('RatingsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        RatingsService,
-        { provide: PrismaService, useValue: prismaServiceMock },
-      ],
+      providers: [RatingsService, { provide: PrismaService, useValue: prismaServiceMock }],
     }).compile();
 
     service = module.get<RatingsService>(RatingsService);
@@ -93,9 +86,7 @@ describe('RatingsService', () => {
     it('crée un rating (title_id fourni, aucun existant)', async () => {
       prismaServiceMock.titles.findUnique.mockResolvedValue({ id: titleId });
       prismaServiceMock.user_ratings.findUnique.mockResolvedValue(null);
-      prismaServiceMock.user_ratings.create.mockResolvedValue(
-        buildRawRating({}),
-      );
+      prismaServiceMock.user_ratings.create.mockResolvedValue(buildRawRating({}));
 
       const result = await service.upsertRating(userId, {
         title_id: titleId,
@@ -123,9 +114,7 @@ describe('RatingsService', () => {
 
     it('met à jour un rating existant (même user_id + title_id)', async () => {
       prismaServiceMock.titles.findUnique.mockResolvedValue({ id: titleId });
-      prismaServiceMock.user_ratings.findUnique.mockResolvedValue(
-        buildRawRating({}),
-      );
+      prismaServiceMock.user_ratings.findUnique.mockResolvedValue(buildRawRating({}));
       prismaServiceMock.user_ratings.update.mockResolvedValue(
         buildRawRating({ note_perso: 8.0, commentaire: 'Encore mieux !' }),
       );
@@ -183,12 +172,8 @@ describe('RatingsService', () => {
 
     it('met à jour note_perso seulement', async () => {
       prismaServiceMock.titles.findUnique.mockResolvedValue({ id: titleId });
-      prismaServiceMock.user_ratings.findUnique.mockResolvedValue(
-        buildRawRating({}),
-      );
-      prismaServiceMock.user_ratings.update.mockResolvedValue(
-        buildRawRating({ note_perso: 9.0 }),
-      );
+      prismaServiceMock.user_ratings.findUnique.mockResolvedValue(buildRawRating({}));
+      prismaServiceMock.user_ratings.update.mockResolvedValue(buildRawRating({ note_perso: 9.0 }));
 
       const result = await service.upsertRating(userId, {
         title_id: titleId,
@@ -205,9 +190,7 @@ describe('RatingsService', () => {
 
     it('met à jour commentaire seulement', async () => {
       prismaServiceMock.titles.findUnique.mockResolvedValue({ id: titleId });
-      prismaServiceMock.user_ratings.findUnique.mockResolvedValue(
-        buildRawRating({}),
-      );
+      prismaServiceMock.user_ratings.findUnique.mockResolvedValue(buildRawRating({}));
       prismaServiceMock.user_ratings.update.mockResolvedValue(
         buildRawRating({ commentaire: 'Nouveau commentaire' }),
       );
@@ -225,7 +208,7 @@ describe('RatingsService', () => {
       });
     });
 
-    it("lève BadRequest si ni title_id ni episode_id", async () => {
+    it('lève BadRequest si ni title_id ni episode_id', async () => {
       await expect(
         service.upsertRating(userId, {
           note_perso: 7.0,
@@ -243,7 +226,7 @@ describe('RatingsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it("lève BadRequest si aucun champ optionnel fourni", async () => {
+    it('lève BadRequest si aucun champ optionnel fourni', async () => {
       await expect(
         service.upsertRating(userId, {
           title_id: titleId,
@@ -273,9 +256,7 @@ describe('RatingsService', () => {
     it("lève NotFound si le rating n'existe pas", async () => {
       prismaServiceMock.user_ratings.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.deleteRating('nonexistent', userId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.deleteRating('nonexistent', userId)).rejects.toThrow(NotFoundException);
     });
 
     it('lève Forbidden si le rating appartient à un autre user', async () => {
@@ -284,9 +265,7 @@ describe('RatingsService', () => {
         user_id: 'other-user',
       });
 
-      await expect(
-        service.deleteRating(ratingId, userId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.deleteRating(ratingId, userId)).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -294,7 +273,7 @@ describe('RatingsService', () => {
   // listUserRatings
   // ======================================================================
   describe('listUserRatings', () => {
-    it('retourne la liste paginée des notes de l\'utilisateur', async () => {
+    it("retourne la liste paginée des notes de l'utilisateur", async () => {
       const rawData = [buildRawRating({})];
       prismaServiceMock.user_ratings.findMany.mockResolvedValue(rawData);
       prismaServiceMock.user_ratings.count.mockResolvedValue(1);
@@ -344,8 +323,7 @@ describe('RatingsService', () => {
 
       await service.listUserRatings(userId, { type: 'film' });
 
-      const callArgs =
-        prismaServiceMock.user_ratings.findMany.mock.calls[0][0];
+      const callArgs = prismaServiceMock.user_ratings.findMany.mock.calls[0][0];
       expect(callArgs.where.titles).toBeDefined();
       expect(callArgs.where.titles.type).toBe('film');
     });
@@ -399,10 +377,9 @@ describe('RatingsService', () => {
     it("lève NotFound si le titre n'existe pas", async () => {
       prismaServiceMock.titles.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.getTitleRatingsSummary('nonexistent'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.getTitleRatingsSummary('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });
-

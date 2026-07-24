@@ -120,7 +120,7 @@ export class WatchesService {
     }
 
     if (watch.user_id !== userId) {
-      throw new ForbiddenException("Ce visionnage ne vous appartient pas.");
+      throw new ForbiddenException('Ce visionnage ne vous appartient pas.');
     }
 
     await this.prisma.user_watches.delete({ where: { id } });
@@ -332,7 +332,7 @@ export class WatchesService {
     });
 
     if (!follow) {
-      throw new NotFoundException("Vous ne suivez pas cette série.");
+      throw new NotFoundException('Vous ne suivez pas cette série.');
     }
 
     await this.prisma.user_follows_serie.delete({

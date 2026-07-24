@@ -13,10 +13,7 @@ describe('DatavizService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        DatavizService,
-        { provide: PrismaService, useValue: mockPrismaService },
-      ],
+      providers: [DatavizService, { provide: PrismaService, useValue: mockPrismaService }],
     }).compile();
 
     service = module.get<DatavizService>(DatavizService);
@@ -27,9 +24,7 @@ describe('DatavizService', () => {
 
   describe('getWatchTime', () => {
     it('retourne les données groupées par période', async () => {
-      const mockData = [
-        { user_id: userId, periode_semaine: new Date('2024-01-01'), minutes: 120 },
-      ];
+      const mockData = [{ user_id: userId, periode_semaine: new Date('2024-01-01'), minutes: 120 }];
       mockPrismaService.$queryRawUnsafe.mockResolvedValue(mockData);
 
       const result = await service.getWatchTime(userId, {
@@ -57,9 +52,7 @@ describe('DatavizService', () => {
     });
 
     it('retourne les données groupées par genre', async () => {
-      const mockData = [
-        { user_id: userId, genre_id: 'genre-uuid', minutes: 200 },
-      ];
+      const mockData = [{ user_id: userId, genre_id: 'genre-uuid', minutes: 200 }];
       mockPrismaService.$queryRawUnsafe.mockResolvedValue(mockData);
 
       const result = await service.getWatchTime(userId, {
@@ -89,9 +82,7 @@ describe('DatavizService', () => {
     });
 
     it('retourne les données groupées par pays', async () => {
-      const mockData = [
-        { user_id: userId, country_id: 'country-uuid', minutes: 150 },
-      ];
+      const mockData = [{ user_id: userId, country_id: 'country-uuid', minutes: 150 }];
       mockPrismaService.$queryRawUnsafe.mockResolvedValue(mockData);
 
       const result = await service.getWatchTime(userId, {
@@ -105,9 +96,7 @@ describe('DatavizService', () => {
     });
 
     it('retourne les données groupées par animation', async () => {
-      const mockData = [
-        { user_id: userId, is_animation: true, minutes: 300 },
-      ];
+      const mockData = [{ user_id: userId, is_animation: true, minutes: 300 }];
       mockPrismaService.$queryRawUnsafe.mockResolvedValue(mockData);
 
       const result = await service.getWatchTime(userId, {
@@ -133,9 +122,7 @@ describe('DatavizService', () => {
 
   describe('getWatchCount', () => {
     it('retourne les données groupées par période', async () => {
-      const mockData = [
-        { user_id: userId, periode_semaine: new Date('2024-01-01'), nb_items: 5 },
-      ];
+      const mockData = [{ user_id: userId, periode_semaine: new Date('2024-01-01'), nb_items: 5 }];
       mockPrismaService.$queryRawUnsafe.mockResolvedValue(mockData);
 
       const result = await service.getWatchCount(userId, {
@@ -162,9 +149,7 @@ describe('DatavizService', () => {
     });
 
     it('retourne les données groupées par genre', async () => {
-      const mockData = [
-        { user_id: userId, genre_id: 'genre-uuid', nb_items: 10 },
-      ];
+      const mockData = [{ user_id: userId, genre_id: 'genre-uuid', nb_items: 10 }];
       mockPrismaService.$queryRawUnsafe.mockResolvedValue(mockData);
 
       const result = await service.getWatchCount(userId, {
@@ -178,9 +163,7 @@ describe('DatavizService', () => {
     });
 
     it('retourne les données groupées par pays', async () => {
-      const mockData = [
-        { user_id: userId, country_id: 'country-uuid', nb_items: 3 },
-      ];
+      const mockData = [{ user_id: userId, country_id: 'country-uuid', nb_items: 3 }];
       mockPrismaService.$queryRawUnsafe.mockResolvedValue(mockData);
 
       const result = await service.getWatchCount(userId, {
@@ -194,9 +177,7 @@ describe('DatavizService', () => {
     });
 
     it('retourne les données groupées par animation', async () => {
-      const mockData = [
-        { user_id: userId, is_animation: false, nb_items: 7 },
-      ];
+      const mockData = [{ user_id: userId, is_animation: false, nb_items: 7 }];
       mockPrismaService.$queryRawUnsafe.mockResolvedValue(mockData);
 
       const result = await service.getWatchCount(userId, {
@@ -221,7 +202,7 @@ describe('DatavizService', () => {
   });
 
   describe('sécurité ORDER BY', () => {
-    it('n\'ajoute que les colonnes autorisées dans le ORDER BY', async () => {
+    it("n'ajoute que les colonnes autorisées dans le ORDER BY", async () => {
       const mockService = service as any;
 
       expect(mockService.orderBy('periode_semaine')).toBe(' ORDER BY periode_semaine');
@@ -232,4 +213,3 @@ describe('DatavizService', () => {
     });
   });
 });
-

@@ -3,11 +3,7 @@
  * Phase 5.1: Tests unitaires pour l'algorithme de recommandation
  */
 
-import {
-  jaccardSimilarity,
-  hasCommonElement,
-  hasCommonGenre,
-} from './jaccard';
+import { jaccardSimilarity, hasCommonElement, hasCommonGenre } from './jaccard';
 
 describe('Jaccard Similarity Utilities', () => {
   describe('jaccardSimilarity', () => {

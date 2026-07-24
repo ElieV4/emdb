@@ -137,7 +137,10 @@ class RateLimiter {
   private lastRefill: number;
   private queue: Array<() => void> = [];
 
-  constructor(private readonly maxRequests: number, private readonly intervalMs: number) {
+  constructor(
+    private readonly maxRequests: number,
+    private readonly intervalMs: number,
+  ) {
     this.tokens = maxRequests;
     this.lastRefill = Date.now();
   }
@@ -326,7 +329,11 @@ export async function getPersonExternalIds(personTmdbId: number): Promise<any> {
   return fetchJson<any>(url);
 }
 
-export async function getTvEpisodeDetails(tmdbId: number, seasonNumber: number, episodeNumber: number): Promise<any> {
+export async function getTvEpisodeDetails(
+  tmdbId: number,
+  seasonNumber: number,
+  episodeNumber: number,
+): Promise<any> {
   const url = buildUrl(`/tv/${tmdbId}/season/${seasonNumber}/episode/${episodeNumber}`, {
     append_to_response: 'credits',
   });
@@ -383,17 +390,24 @@ export async function getCollectionDetails(collectionId: number): Promise<any> {
   return fetchJson<any>(url);
 }
 
-export async function getTrending(mediaType: 'movie' | 'tv' | 'person', timeWindow: 'day' | 'week'): Promise<any> {
+export async function getTrending(
+  mediaType: 'movie' | 'tv' | 'person',
+  timeWindow: 'day' | 'week',
+): Promise<any> {
   const url = buildUrl(`/trending/${mediaType}/${timeWindow}`);
   return fetchJson<any>(url);
 }
 
-export async function getDiscoverMovie(filters: Record<string, string | number | undefined>): Promise<any> {
+export async function getDiscoverMovie(
+  filters: Record<string, string | number | undefined>,
+): Promise<any> {
   const url = buildUrl('/discover/movie', filters);
   return fetchJson<any>(url);
 }
 
-export async function getDiscoverTv(filters: Record<string, string | number | undefined>): Promise<any> {
+export async function getDiscoverTv(
+  filters: Record<string, string | number | undefined>,
+): Promise<any> {
   const url = buildUrl('/discover/tv', filters);
   return fetchJson<any>(url);
 }

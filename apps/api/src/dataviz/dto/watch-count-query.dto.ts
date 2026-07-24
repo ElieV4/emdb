@@ -26,4 +26,3 @@ export class WatchCountQueryDto {
   @Max(2100)
   yearTo?: number;
 }
-

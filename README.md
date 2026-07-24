@@ -80,6 +80,12 @@ Lire le contenu du dossier ./docs pour comprendre le dépôt
     - calcul batch mensuel via BullMQ (queue `recommendations`)
     - endpoints admin : POST /admin/compute-recommendations, GET /admin/compute-recommendations/:jobId/status, GET /admin/recommendations/stats
 
+- notifications
+    - génération automatique pour les nouveaux épisodes des séries suivies
+    - types : `new_episode`, `season_premiere`, `series_return`
+    - génération dans le worker via `dailySyncNewEpisodes` (cron quotidien)
+    - API : GET /notifications, PATCH /notifications/:id/read, PATCH /notifications/read-all, GET /notifications/unread-count
+
 - calendrier de sortie pour série
     - tvtime like, par série > nombre d'épisodes non vus
 

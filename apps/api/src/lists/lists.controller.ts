@@ -56,10 +56,7 @@ export class ListsController {
    * Crée une nouvelle liste.
    */
   @Post('lists')
-  async createList(
-    @CurrentUser() user: any,
-    @Body() dto: CreateListDto,
-  ) {
+  async createList(@CurrentUser() user: any, @Body() dto: CreateListDto) {
     return this.listsService.createList(user.id, dto);
   }
 
@@ -77,10 +74,7 @@ export class ListsController {
    * Détail d'une liste avec ses items (titles).
    */
   @Get('lists/:id')
-  async getListDetail(
-    @CurrentUser() user: any,
-    @Param('id') id: string,
-  ) {
+  async getListDetail(@CurrentUser() user: any, @Param('id') id: string) {
     return this.listsService.getListDetail(id, user.id);
   }
 
@@ -89,11 +83,7 @@ export class ListsController {
    * Modifie le nom et/ou la description d'une liste.
    */
   @Patch('lists/:id')
-  async updateList(
-    @CurrentUser() user: any,
-    @Param('id') id: string,
-    @Body() dto: UpdateListDto,
-  ) {
+  async updateList(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: UpdateListDto) {
     return this.listsService.updateList(id, user.id, dto);
   }
 
@@ -103,10 +93,7 @@ export class ListsController {
    */
   @Delete('lists/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteList(
-    @CurrentUser() user: any,
-    @Param('id') id: string,
-  ): Promise<void> {
+  async deleteList(@CurrentUser() user: any, @Param('id') id: string): Promise<void> {
     await this.listsService.deleteList(id, user.id);
   }
 
@@ -177,10 +164,7 @@ export class ListsController {
    * Liste des partages d'une liste.
    */
   @Get('lists/:listId/shares')
-  async getShares(
-    @CurrentUser() user: any,
-    @Param('listId') listId: string,
-  ) {
+  async getShares(@CurrentUser() user: any, @Param('listId') listId: string) {
     return this.listsService.getShares(listId, user.id);
   }
 
@@ -207,4 +191,3 @@ export class ListsController {
     return this.listsService.getSharedLists(user.id);
   }
 }
-

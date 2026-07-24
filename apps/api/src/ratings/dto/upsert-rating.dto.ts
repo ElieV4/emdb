@@ -28,4 +28,3 @@ export class UpsertRatingDto {
   @MaxLength(2000)
   commentaire?: string;
 }
-

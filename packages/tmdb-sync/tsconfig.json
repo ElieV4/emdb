@@ -2,6 +2,7 @@
   "extends": "../db/tsconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "rootDir": ".",
     "paths": {
       "@emdb/db": ["../db/index.ts"],
       "@emdb/tmdb-client": ["../tmdb-client/src/index.ts"],

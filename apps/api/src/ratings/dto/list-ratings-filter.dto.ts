@@ -22,4 +22,3 @@ export class ListRatingsFilterDto {
   @Max(100)
   limit?: number = 20;
 }
-

@@ -27,4 +27,3 @@ export class ReorderDto {
   @Type(() => ReorderItem)
   items!: ReorderItem[];
 }
-

@@ -71,9 +71,7 @@ export async function importPersonByTmdbId(tmdbId: number) {
   const tmdbPerson = await getPersonDetails(tmdbId);
   const externalIds = await getPersonExternalIds(tmdbId);
   const { wikidata_id } = mapTmdbPersonExternalIds(externalIds);
-  const wikiUrl = wikidata_id
-    ? await getWikipediaUrlFromWikidataId(wikidata_id)
-    : null;
+  const wikiUrl = wikidata_id ? await getWikipediaUrlFromWikidataId(wikidata_id) : null;
 
   const mappedPerson = mapTmdbPerson(tmdbPerson, wikiUrl);
 
@@ -168,10 +166,7 @@ async function ensureCountryIds(countries: { iso_3166_1: string; name: string }[
   return ids;
 }
 
-export async function importTitleByTmdbId(
-  tmdbId: number,
-  type: 'film' | 'serie',
-) {
+export async function importTitleByTmdbId(tmdbId: number, type: 'film' | 'serie') {
   await createSyncLog({
     tmdb_id: tmdbId,
     type,
@@ -305,9 +300,7 @@ export async function refreshPersonData(personId: string) {
   const tmdbPerson = await getPersonDetails(person.tmdb_id);
   const externalIds = await getPersonExternalIds(person.tmdb_id);
   const { wikidata_id } = mapTmdbPersonExternalIds(externalIds);
-  const wikiUrl = wikidata_id
-    ? await getWikipediaUrlFromWikidataId(wikidata_id)
-    : null;
+  const wikiUrl = wikidata_id ? await getWikipediaUrlFromWikidataId(wikidata_id) : null;
 
   return prisma.people.update({
     where: { id: personId },
@@ -315,7 +308,9 @@ export async function refreshPersonData(personId: string) {
       nom: tmdbPerson.name,
       genre: tmdbPerson.gender === 1 ? 'femme' : tmdbPerson.gender === 2 ? 'homme' : 'autre',
       date_naissance: tmdbPerson.birthday ? new Date(tmdbPerson.birthday) : null,
-      photo_url: tmdbPerson.profile_path ? `https://image.tmdb.org/t/p/w500${tmdbPerson.profile_path}` : null,
+      photo_url: tmdbPerson.profile_path
+        ? `https://image.tmdb.org/t/p/w500${tmdbPerson.profile_path}`
+        : null,
       bio: tmdbPerson.biography,
       wiki_url: wikiUrl,
     },
@@ -328,18 +323,137 @@ export async function refreshTitleData(titleId: string) {
     throw new Error('Titre introuvable ou sans tmdb_id');
   }
 
-  const tmdbData = title.type === 'film'
-    ? await getMovieDetails(title.tmdb_id)
-    : await getTvDetails(title.tmdb_id);
+  const tmdbData =
+    title.type === 'film'
+      ? await getMovieDetails(title.tmdb_id)
+      : await getTvDetails(title.tmdb_id);
 
-  const updatePayload = title.type === 'film'
-    ? mapTmdbMovieToTitle(tmdbData)
-    : mapTmdbTvToTitle(tmdbData);
+  const updatePayload =
+    title.type === 'film' ? mapTmdbMovieToTitle(tmdbData) : mapTmdbTvToTitle(tmdbData);
 
   return prisma.titles.update({
     where: { id: titleId },
     data: updatePayload,
   });
+}
+
+/**
+ * Génère des notifications pour les nouveaux épisodes des séries suivies.
+ *
+ * Algorithme :
+ * 1. Récupérer toutes les séries en cours avec next_episode_air_date <= aujourd'hui
+ * 2. Pour chaque série, trouver les utilisateurs qui la suivent
+ * 3. Trouver le dernier épisode sorti non encore notifié
+ * 4. Créer une notification par follower (déduplication par episode_id + type)
+ *
+ * @returns Nombre total de notifications créées
+ * @phase 7.2
+ */
+export async function generateNewEpisodeNotifications(): Promise<number> {
+  const series = await prisma.titles.findMany({
+    where: {
+      type: 'serie',
+      statut_serie: { in: ['en_cours', 'retourne'] },
+      next_episode_air_date: { lte: new Date() },
+    },
+    select: { id: true, titre_vo: true },
+  });
+
+  if (series.length === 0) return 0;
+
+  let totalNotifications = 0;
+
+  for (const serie of series) {
+    const followers = await prisma.user_follows_serie.findMany({
+      where: { title_id: serie.id },
+      select: { user_id: true },
+    });
+
+    if (followers.length === 0) continue;
+
+    const latestEpisode = await prisma.episodes.findFirst({
+      where: {
+        seasons: { title_id: serie.id },
+        date_sortie: { lte: new Date() },
+      },
+      orderBy: { date_sortie: 'desc' },
+      select: { id: true, numero: true, titre: true },
+    });
+
+    if (!latestEpisode) continue;
+
+    const existingNotif = await prisma.notifications.findFirst({
+      where: {
+        episode_id: latestEpisode.id,
+        type: 'new_episode',
+      },
+    });
+
+    if (existingNotif) continue;
+
+    const notifications = followers.map((f) => ({
+      user_id: f.user_id,
+      episode_id: latestEpisode.id,
+      type: 'new_episode',
+      lu: false,
+    }));
+
+    await prisma.notifications.createMany({ data: notifications });
+    totalNotifications += notifications.length;
+  }
+
+  return totalNotifications;
+}
+
+/**
+ * Génère une notification pour la première d'une nouvelle saison.
+ *
+ * Déclenché quand une nouvelle saison est importée pour une série suivie.
+ *
+ * @param titleId - UUID de la série
+ * @param seasonNumber - Numéro de la nouvelle saison
+ * @returns Nombre de notifications créées
+ * @phase 7.2
+ */
+export async function generateSeasonPremiereNotification(
+  titleId: string,
+  seasonNumber: number,
+): Promise<number> {
+  const followers = await prisma.user_follows_serie.findMany({
+    where: { title_id: titleId },
+    select: { user_id: true },
+  });
+
+  if (followers.length === 0) return 0;
+
+  const firstEpisode = await prisma.episodes.findFirst({
+    where: {
+      seasons: { title_id: titleId, numero: seasonNumber },
+    },
+    orderBy: { numero: 'asc' },
+    select: { id: true },
+  });
+
+  if (!firstEpisode) return 0;
+
+  const existingNotif = await prisma.notifications.findFirst({
+    where: {
+      episode_id: firstEpisode.id,
+      type: 'season_premiere',
+    },
+  });
+
+  if (existingNotif) return 0;
+
+  const notifications = followers.map((f) => ({
+    user_id: f.user_id,
+    episode_id: firstEpisode.id,
+    type: 'season_premiere',
+    lu: false,
+  }));
+
+  await prisma.notifications.createMany({ data: notifications });
+  return notifications.length;
 }
 
 export async function dailySyncNewEpisodes() {
@@ -359,10 +473,7 @@ export async function dailySyncNewEpisodes() {
     },
   });
 
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-
-  let notificationsCreated = 0;
+  let titlesRefreshed = 0;
 
   for (const title of titles) {
     if (!title.tmdb_id) {
@@ -371,89 +482,13 @@ export async function dailySyncNewEpisodes() {
 
     await refreshTitleData(title.id);
     await importSeasonsForSerie(title.id);
-
-    const seasons = await prisma.seasons.findMany({
-      where: { title_id: title.id },
-      select: { id: true },
-    });
-
-    if (seasons.length === 0) {
-      continue;
-    }
-
-    const seasonIds = seasons.map((season) => season.id);
-    const episodes = await prisma.episodes.findMany({
-      where: {
-        season_id: { in: seasonIds },
-        date_sortie: { lte: today },
-      },
-      select: { id: true },
-    });
-
-    if (episodes.length === 0) {
-      continue;
-    }
-
-    const followers = await prisma.user_follows_serie.findMany({
-      where: { title_id: title.id },
-      select: { user_id: true },
-    });
-
-    if (followers.length === 0) {
-      continue;
-    }
-
-    const episodeIds = episodes.map((episode) => episode.id);
-    const followerIds = followers.map((follower) => follower.user_id);
-
-    const existingNotifications = await prisma.notifications.findMany({
-      where: {
-        user_id: { in: followerIds },
-        episode_id: { in: episodeIds },
-        type: 'nouvel_episode',
-      },
-      select: {
-        user_id: true,
-        episode_id: true,
-      },
-    });
-
-    const existingSet = new Set(
-      existingNotifications.map((notification) => `${notification.user_id}:${notification.episode_id}`),
-    );
-
-    const missingNotifications = [] as Array<{
-      user_id: string;
-      episode_id: string;
-      type: string;
-      lu: boolean;
-      created_at: Date;
-    }>;
-
-    for (const follower of followers) {
-      for (const episode of episodes) {
-        const key = `${follower.user_id}:${episode.id}`;
-        if (!existingSet.has(key)) {
-          missingNotifications.push({
-            user_id: follower.user_id,
-            episode_id: episode.id,
-            type: 'nouvel_episode',
-            lu: false,
-            created_at: new Date(),
-          });
-        }
-      }
-    }
-
-    if (missingNotifications.length > 0) {
-      await prisma.notifications.createMany({
-        data: missingNotifications,
-      });
-      notificationsCreated += missingNotifications.length;
-    }
+    titlesRefreshed++;
   }
 
-  return notificationsCreated;
+  // Générer les notifications pour les nouveaux épisodes (Phase 7.2)
+  const notificationsCreated = await generateNewEpisodeNotifications();
+
+  return { titlesRefreshed, notificationsCreated };
 }
 
 export async function weeklyResyncChanges(startDate: string, endDate: string) {

@@ -288,7 +288,7 @@ admin/
 
 ### Module 13: Notifications (`apps/api/src/notifications/`) — Phase 7.1
 
-**Structure du module (à créer) :**
+**Structure du module (créé en Phase 7.1) :**
 ```
 notifications/
 ├── notifications.module.ts          # Configuration du module NestJS
@@ -296,7 +296,7 @@ notifications/
 ├── notifications.service.ts         # Logique métier
 ├── dto/
 │   └── list-notifications-filter.dto.ts  # DTO pour filtres de liste
-└── notifications.service.spec.ts    # Tests unitaires
+└── notifications.service.spec.ts    # Tests unitaires (17 tests)
 ```
 
 **Fichiers sources (6 fichiers) :**
@@ -523,7 +523,7 @@ recommender/
 | Dataviz | `apps/api/src/dataviz/dataviz.service.spec.ts` | 8.1 Ko | ✅ Implémenté |
 | Recommender | `apps/api/src/recommender/recommender.service.spec.ts` | 4.8 Ko | ✅ Implémenté |
 | Admin | `apps/api/src/admin/admin.service.spec.ts` | 3.2 Ko | ✅ Implémenté |
-| **Notifications** | **`apps/api/src/notifications/notifications.service.spec.ts`** | **À créer** | ❌ À implémenter |
+| **Notifications** | **`apps/api/src/notifications/notifications.service.spec.ts`** | **17 tests** | ✅ Implémenté (Phase 7.1) + worker tests (Phase 7.2) |
 | Worker | `apps/worker/src/worker.spec.ts` | 1.8 Ko | ✅ Implémenté |
 
 #### Tests d'Intégration
@@ -681,9 +681,9 @@ recommender/
 - **Mocks utilisés** : `BullMQ`, `PrismaService`
 - **Couverture** : ~75%
 
-#### Module Notifications (Phase 7.1 — À implémenter)
-- **Fichier** : `notifications.service.spec.ts` (À créer)
-- **Tests prévus** :
+#### Module Notifications (Phase 7.1 — Implémenté)
+- **Fichier** : `notifications.service.spec.ts` (5.2 Ko)
+- **Tests effectués** (17 tests) :
   - `listNotifications` : retourne la liste paginée, triée par non lues en priorité
   - `listNotifications` : retourne un tableau vide si aucune notification
   - `markAsRead` : marque une notification comme lue
@@ -691,8 +691,16 @@ recommender/
   - `markAsRead` : lève Forbidden si la notification appartient à un autre user
   - `markAllAsRead` : marque toutes les notifications de l'utilisateur comme lues
   - `getUnreadCount` : retourne le nombre de notifications non lues
+- **Tests supplémentaire Phase 7.2** (`packages/tmdb-sync/src/index.spec.ts`) :
+  - `generateNewEpisodeNotifications` : crée des notifications pour les followers
+  - `generateNewEpisodeNotifications` : ne crée pas de doublon (vérification existante)
+  - `generateNewEpisodeNotifications` : ignore les séries sans followers
+  - `generateSeasonPremiereNotification` : crée des notifications pour première de saison
+  - `generateSeasonPremiereNotification` : ne crée pas de doublon
+  - `generateSeasonPremiereNotification` : retourne 0 si pas d'épisodes
+  - `dailySyncNewEpisodes` : retourne le nombre de notifications créées
 - **Mocks utilisés** : `PrismaService`
-- **Couverture cible** : ~85%
+- **Couverture** : ~87%
 
 #### Worker
 - **Fichier** : `worker.spec.ts` (1.8 Ko)

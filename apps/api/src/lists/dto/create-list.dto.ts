@@ -22,4 +22,3 @@ export class CreateListDto {
   @MaxLength(500)
   description?: string;
 }
-

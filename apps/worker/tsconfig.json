@@ -3,6 +3,8 @@
   "compilerOptions": {
     "outDir": "./dist",
     "baseUrl": ".",
+    "rootDir": ".",
+    "ignoreDeprecations": "6.0",
     "types": ["node", "jest"],
     "paths": {
       "@emdb/db": ["../../packages/db/index.ts"],

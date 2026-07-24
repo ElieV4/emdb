@@ -15,4 +15,3 @@ export class ShareListDto {
   @IsEnum(['lecture', 'edition'])
   permission!: 'lecture' | 'edition';
 }
-

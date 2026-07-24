@@ -29,7 +29,13 @@ jest.mock('bullmq', () => {
   };
 });
 
-import { createImportQueue, createCronQueue, getCronRepeatJobs, IMPORT_QUEUE_NAME, CRON_QUEUE_NAME } from './worker';
+import {
+  createImportQueue,
+  createCronQueue,
+  getCronRepeatJobs,
+  IMPORT_QUEUE_NAME,
+  CRON_QUEUE_NAME,
+} from './worker';
 
 describe('worker queue helpers', () => {
   const redisUrl = 'redis://localhost:6379';

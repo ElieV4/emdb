@@ -99,10 +99,7 @@ describe('AdminService', () => {
     it('gère les erreurs de connexion Redis', async () => {
       mockQueueAdd.mockRejectedValue(new Error('Redis connection refused'));
 
-      await expect(service.refreshMaterializedViews()).rejects.toThrow(
-        'Redis connection refused',
-      );
+      await expect(service.refreshMaterializedViews()).rejects.toThrow('Redis connection refused');
     });
   });
 });
-

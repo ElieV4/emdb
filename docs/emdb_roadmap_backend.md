@@ -377,7 +377,7 @@ Découpage en 3 sous-phases (ordre recommandé par dépendances croissantes) :
 
 ### 7.2 Génération des notifications (worker + tmdb-sync)
   *Dépend de :* Phase 7.1 (module API), Phase 2.3 (tmdb-sync), Phase 4.1 (watches/follows)
-  *Status: ❌ À implémenter*
+  *Status: ✅ Implémenté*
 
   **Contexte :** La fonction `dailySyncNewEpisodes()` existe déjà dans `packages/tmdb-sync/src/index.ts` et rafraîchit les titres en cours. Elle doit être enrichie pour créer des notifications dans la table `notifications` lorsqu'un nouvel épisode est détecté.
 

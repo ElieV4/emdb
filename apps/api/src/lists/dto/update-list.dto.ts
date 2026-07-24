@@ -16,4 +16,3 @@ export class UpdateListDto {
   @MaxLength(500)
   description?: string;
 }
-

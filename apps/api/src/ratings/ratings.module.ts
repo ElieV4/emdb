@@ -10,4 +10,3 @@ import { RatingsService } from './ratings.service';
   exports: [RatingsService],
 })
 export class RatingsModule {}
-

@@ -205,8 +205,8 @@ export function mapTmdbEpisodeCredits(
       crewMember.job === 'Director'
         ? 'realisateur'
         : crewMember.job === 'Writer' || crewMember.job === 'Screenplay'
-        ? 'scenariste'
-        : 'autre';
+          ? 'scenariste'
+          : 'autre';
 
     mapped.push({
       tmdb_person_id: crewMember.id,
@@ -219,9 +219,10 @@ export function mapTmdbEpisodeCredits(
   return mapped;
 }
 
-export function mapTmdbPersonExternalIds(
-  tmdbExternalIds: TmdbExternalIds,
-): { imdb_id?: string | null; wikidata_id?: string | null } {
+export function mapTmdbPersonExternalIds(tmdbExternalIds: TmdbExternalIds): {
+  imdb_id?: string | null;
+  wikidata_id?: string | null;
+} {
   return {
     imdb_id: tmdbExternalIds.imdb_id ?? null,
     wikidata_id: tmdbExternalIds.wikidata_id ?? null,
@@ -266,8 +267,8 @@ export function mapTmdbCredits(
       crewMember.job === 'Director'
         ? 'realisateur'
         : crewMember.job === 'Writer' || crewMember.job === 'Screenplay'
-        ? 'scenariste'
-        : 'autre';
+          ? 'scenariste'
+          : 'autre';
 
     credits.push({
       tmdb_person_id: crewMember.id,
@@ -295,7 +296,9 @@ export function mapTmdbPerson(tmdbPerson: TmdbPersonDetails, wikiUrl: string | n
     genre: genderMap[tmdbPerson.gender ?? 0] ?? 'autre',
     date_naissance: tmdbPerson.birthday ? new Date(tmdbPerson.birthday) : null,
     pays_id: null,
-    photo_url: tmdbPerson.profile_path ? `https://image.tmdb.org/t/p/w500${tmdbPerson.profile_path}` : null,
+    photo_url: tmdbPerson.profile_path
+      ? `https://image.tmdb.org/t/p/w500${tmdbPerson.profile_path}`
+      : null,
     bio: tmdbPerson.biography ?? null,
     wiki_url: wikiUrl,
     source: 'tmdb',
@@ -320,7 +323,9 @@ export function mapTmdbEpisode(tmdbEpisode: TmdbEpisodeDetails, seasonId: string
     synopsis: tmdbEpisode.overview ?? null,
     date_sortie: tmdbEpisode.air_date ? new Date(tmdbEpisode.air_date) : null,
     duree_minutes: tmdbEpisode.runtime ?? null,
-    image_url: tmdbEpisode.still_path ? `https://image.tmdb.org/t/p/w500${tmdbEpisode.still_path}` : null,
+    image_url: tmdbEpisode.still_path
+      ? `https://image.tmdb.org/t/p/w500${tmdbEpisode.still_path}`
+      : null,
   };
 }
 
@@ -334,7 +339,9 @@ export function mapTmdbMovieToTitle(tmdbMovie: TmdbMovieDetails) {
     date_sortie: tmdbMovie.release_date ? new Date(tmdbMovie.release_date) : null,
     duree_minutes: tmdbMovie.runtime ?? null,
     note_imdb: tmdbMovie.vote_average ?? null,
-    affiche_url: tmdbMovie.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbMovie.poster_path}` : null,
+    affiche_url: tmdbMovie.poster_path
+      ? `https://image.tmdb.org/t/p/w500${tmdbMovie.poster_path}`
+      : null,
     statut_serie: null,
     next_episode_air_date: null,
     source: 'tmdb' as const,
@@ -360,7 +367,7 @@ export function mapTmdbTvToTitle(tmdbTv: TmdbTvDetails) {
     duree_minutes: tmdbTv.episode_run_time?.[0] ?? null,
     note_imdb: tmdbTv.vote_average ?? null,
     affiche_url: tmdbTv.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbTv.poster_path}` : null,
-    statut_serie: tmdbTv.status ? statusMap[tmdbTv.status] ?? tmdbTv.status.toLowerCase() : null,
+    statut_serie: tmdbTv.status ? (statusMap[tmdbTv.status] ?? tmdbTv.status.toLowerCase()) : null,
     next_episode_air_date: tmdbTv.next_episode_to_air?.air_date
       ? new Date(tmdbTv.next_episode_to_air.air_date)
       : null,

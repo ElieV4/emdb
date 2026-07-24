@@ -1,7 +1,7 @@
 /**
  * eMDB Recommender - Main Recommendation Algorithm
  * Phase 5.1: Algorithme de similarité pour titres et personnes
- * 
+ *
  * Implémente la similarité Jaccard pondérée :
  * - Genres partagés : poids 0.6
  * - Acteurs partagés (top 10) : poids 0.3
@@ -40,7 +40,7 @@ const prisma = new PrismaClient();
 
 /**
  * Calcule le score de similarité pondéré entre deux titres
- * 
+ *
  * @param genresA - Genres du titre A
  * @param genresB - Genres du titre B
  * @param actorsA - Acteurs du titre A (top 10)
@@ -50,9 +50,12 @@ const prisma = new PrismaClient();
  * @returns Score entre 0 et 1
  */
 function computeTitleScore(
-  genresA: Set<string>, genresB: Set<string>,
-  actorsA: Set<string>, actorsB: Set<string>,
-  directorsA: Set<string>, directorsB: Set<string>,
+  genresA: Set<string>,
+  genresB: Set<string>,
+  actorsA: Set<string>,
+  actorsB: Set<string>,
+  directorsA: Set<string>,
+  directorsB: Set<string>,
 ): number {
   const genreScore = jaccardSimilarity(genresA, genresB) * 0.6;
   const actorScore = jaccardSimilarity(actorsA, actorsB) * 0.3;
@@ -62,7 +65,7 @@ function computeTitleScore(
 
 /**
  * Charge tous les titres avec leurs genres depuis la base de données
- * 
+ *
  * @returns Map title_id -> Set<genre_id>
  */
 async function loadTitleGenres(): Promise<Map<string, Set<string>>> {
@@ -77,7 +80,7 @@ async function loadTitleGenres(): Promise<Map<string, Set<string>>> {
 
   const titleGenres = new Map<string, Set<string>>();
   for (const t of titlesWithGenres) {
-    titleGenres.set(t.id, new Set(t.title_genres.map(tg => tg.genre_id)));
+    titleGenres.set(t.id, new Set(t.title_genres.map((tg) => tg.genre_id)));
   }
 
   return titleGenres;
@@ -86,7 +89,7 @@ async function loadTitleGenres(): Promise<Map<string, Set<string>>> {
 /**
  * Charge les crédits pour acteurs (top 10) et réalisateurs depuis la base de données
  * Filtre les crédits au niveau titre (episode_id = null)
- * 
+ *
  * @returns Map title_id -> { actors: Set<person_id>, directors: Set<person_id> }
  */
 async function loadTitleCredits(): Promise<Map<string, TitleCredits>> {
@@ -117,14 +120,14 @@ async function loadTitleCredits(): Promise<Map<string, TitleCredits>> {
 /**
  * Calcule les recommandations de titres similaires pour tous les titres
  * Utilise un traitement par batch pour éviter les problèmes de mémoire
- * 
+ *
  * @param batchSize - Taille du batch (par défaut 100)
  * @returns Nombre total de recommandations insérées
  */
 export async function computeTitleRecommendations(batchSize: number = 100): Promise<number> {
   const titleGenres = await loadTitleGenres();
   const titleCredits = await loadTitleCredits();
-  
+
   const allTitleIds = Array.from(titleGenres.keys());
   let totalInserted = 0;
 
@@ -146,9 +149,12 @@ export async function computeTitleRecommendations(batchSize: number = 100): Prom
 
         const creditsB = titleCredits.get(titleIdB) ?? { actors: new Set(), directors: new Set() };
         const score = computeTitleScore(
-          genresA, genresB,
-          creditsA.actors, creditsB.actors,
-          creditsA.directors, creditsB.directors,
+          genresA,
+          genresB,
+          creditsA.actors,
+          creditsB.actors,
+          creditsA.directors,
+          creditsB.directors,
         );
 
         if (score > 0) {
@@ -182,7 +188,9 @@ export async function computeTitleRecommendations(batchSize: number = 100): Prom
     }
 
     totalInserted += records.length;
-    console.log(`[batch ${i / batchSize + 1}] ${batch.length} titles processed, ${records.length} recs`);
+    console.log(
+      `[batch ${i / batchSize + 1}] ${batch.length} titles processed, ${records.length} recs`,
+    );
   }
 
   return totalInserted;
@@ -190,7 +198,7 @@ export async function computeTitleRecommendations(batchSize: number = 100): Prom
 
 /**
  * Charge les crédits groupés par personne depuis la base de données
- * 
+ *
  * @returns Map person_id -> { titles: Set<title_id>, genre: string | null }
  */
 async function loadPersonData(): Promise<Map<string, PersonData>> {
@@ -219,12 +227,12 @@ async function loadPersonData(): Promise<Map<string, PersonData>> {
 
 /**
  * Calcule les recommandations de personnes similaires pour toutes les personnes
- * 
+ *
  * @returns Nombre total de recommandations insérées
  */
 export async function computePersonRecommendations(): Promise<number> {
   const personData = await loadPersonData();
-  
+
   const personIds = Array.from(personData.keys());
   const records: PersonRecommendation[] = [];
 
@@ -273,7 +281,7 @@ export async function computePersonRecommendations(): Promise<number> {
 
 /**
  * Calcule toutes les recommandations (titres + personnes)
- * 
+ *
  * @param batchSize - Taille du batch pour les titres
  * @returns Statistiques { titlesComputed: number, peopleComputed: number }
  */
@@ -294,14 +302,16 @@ export async function computeAllRecommendations(batchSize: number = 100): Promis
 
 /**
  * Calcule les recommandations pour un seul titre (utile en dev)
- * 
+ *
  * @param titleId - ID du titre à analyser
  * @returns Tableau des recommandations pour ce titre
  */
-export async function computeRecommendationsForTitle(titleId: string): Promise<TitleRecommendation[]> {
+export async function computeRecommendationsForTitle(
+  titleId: string,
+): Promise<TitleRecommendation[]> {
   const titleGenres = await loadTitleGenres();
   const titleCredits = await loadTitleCredits();
-  
+
   const allTitleIds = Array.from(titleGenres.keys());
   const candidates: Array<{ id: string; score: number }> = [];
 
@@ -321,9 +331,12 @@ export async function computeRecommendationsForTitle(titleId: string): Promise<T
 
     const creditsB = titleCredits.get(titleIdB) ?? { actors: new Set(), directors: new Set() };
     const score = computeTitleScore(
-      genresA, genresB,
-      creditsA.actors, creditsB.actors,
-      creditsA.directors, creditsB.directors,
+      genresA,
+      genresB,
+      creditsA.actors,
+      creditsB.actors,
+      creditsA.directors,
+      creditsB.directors,
     );
 
     if (score > 0) {
@@ -334,7 +347,7 @@ export async function computeRecommendationsForTitle(titleId: string): Promise<T
   candidates.sort((a, b) => b.score - a.score);
   const top10 = candidates.slice(0, 10);
 
-  return top10.map(c => ({
+  return top10.map((c) => ({
     title_id: titleId,
     recommended_id: c.id,
     score: c.score,
