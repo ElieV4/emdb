@@ -7,8 +7,9 @@
 
 ## 📋 Table des Matières
 
-1. [Fichiers Sources par Module](#-fichiers-sources-par-module)
-2. [Tests](#-tests)
+1. [Fichiers Sources par Module (Backend)](#-fichiers-sources-par-module)
+2. [Fichiers Sources par Module (Frontend)](#-fichiers-sources-par-module-frontend)
+3. [Tests](#-tests)
 
 ---
 
@@ -824,17 +825,179 @@ npm run test:watch
 
 ---
 
-## 📊 Résumé
+## 🖥️ Fichiers Sources par Module (Frontend)
 
-| Catégorie | Nombre | Détails |
-|----------|--------|---------|
-| **Modules API** | 14 | auth, users, titles, people, seasons-episodes, credits, watches, ratings, lists, dataviz, recommender, admin, **notifications**, common |
-| **Packages** | 6 | db, tmdb-client, tmdb-mapper, tmdb-sync, wikidata-client, recommender |
-| **Fichiers sources** | ~120+ | Tous les .ts hors tests |
-| **Fichiers de test** | ~23 | Tous les .spec.ts |
-| **Lignes de code** | ~17 000+ | Estimation |
-| **Lignes de test** | ~28 000+ | Estimation |
+### Phase 0 — Socle technique (`apps/web/`)
+
+**Structure du projet :**
+```
+apps/web/
+├── src/
+│   ├── app/
+│   │   ├── (auth)/
+│   │   │   ├── layout.tsx
+│   │   │   ├── login/page.tsx
+│   │   │   └── register/page.tsx
+│   │   ├── (frontend)/
+│   │   │   └── layout.tsx
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   ├── error.tsx
+│   │   └── not-found.tsx
+│   ├── components/
+│   │   ├── common/
+│   │   │   ├── ErrorBoundary.tsx
+│   │   │   ├── LoadingSpinner.tsx
+│   │   │   └── Pagination.tsx
+│   │   ├── layout/
+│   │   │   ├── Footer.tsx
+│   │   │   └── Header.tsx
+│   │   └── ui/
+│   │       ├── button.tsx
+│   │       └── dropdown-menu.tsx
+│   ├── hooks/
+│   │   └── auth/
+│   │       ├── useAuth.ts
+│   │       ├── useLogin.ts
+│   │       ├── useLogout.ts
+│   │       └── useRegister.ts
+│   ├── lib/
+│   │   ├── api/
+│   │   │   ├── apiClient.ts
+│   │   │   └── queryClient.ts
+│   │   ├── types/
+│   │   │   └── api.ts
+│   │   └── utils.ts
+│   ├── store/
+│   │   └── authStore.ts
+│   ├── styles/
+│   │   └── globals.css
+│   └── types/
+│       └── css.d.ts
+├── __tests__/
+│   └── unit/
+│       ├── components/
+│       │   ├── ErrorBoundary.test.tsx
+│       │   ├── LoadingSpinner.test.tsx
+│       │   └── Pagination.test.tsx
+│       └── hooks/
+│           └── auth/
+│               ├── useAuth.test.tsx
+│               ├── useLogin.test.tsx
+│               ├── useLogout.test.tsx
+│               └── useRegister.test.tsx
+├── cypress/
+│   └── e2e/
+├── design-tokens.ts
+├── jest.config.js
+├── jest.setup.ts
+├── middleware.ts
+├── next.config.js
+├── package.json
+├── postcss.config.js
+├── tailwind.config.ts
+├── tsconfig.json
+├── .eslintrc.json
+├── .prettierrc
+└── .env.local
+```
+
+**Fichiers sources Phase 0 (23 fichiers) :**
+- `src/app/layout.tsx` — Layout racine avec providers React Query
+- `src/app/page.tsx` — Page d'accueil
+- `src/app/error.tsx` — Gestion erreurs globale
+- `src/app/not-found.tsx` — Page 404
+- `src/app/(auth)/layout.tsx` — Layout auth
+- `src/app/(auth)/login/page.tsx` — Page login
+- `src/app/(auth)/register/page.tsx` — Page register
+- `src/app/(frontend)/layout.tsx` — Layout frontend
+- `src/components/layout/Header.tsx` — Header navigation
+- `src/components/layout/Footer.tsx` — Footer
+- `src/components/common/LoadingSpinner.tsx` — Spinner
+- `src/components/common/ErrorBoundary.tsx` — Boundary erreurs
+- `src/components/common/Pagination.tsx` — Pagination
+- `src/components/ui/button.tsx` — Button shadcn/ui (@base-ui/react)
+- `src/components/ui/dropdown-menu.tsx` — DropdownMenu shadcn/ui (@base-ui/react)
+- `src/hooks/auth/useAuth.ts` — Hook store auth
+- `src/hooks/auth/useLogin.ts` — Mutation login
+- `src/hooks/auth/useRegister.ts` — Mutation register
+- `src/hooks/auth/useLogout.ts` — Mutation logout
+- `src/lib/api/apiClient.ts` — Client API fetch
+- `src/lib/api/queryClient.ts` — Config React Query
+- `src/lib/types/api.ts` — Types partagés
+- `src/store/authStore.ts` — Store Zustand auth
+- `src/styles/globals.css` — Styles globaux + CSS variables thème
+- `middleware.ts` — Middleware Next.js
+- `tailwind.config.ts` — Config Tailwind + design tokens
+- `design-tokens.ts` — Charte graphique complète
+- `next.config.js` — Config Next.js (standalone, images TMDB)
+- `tsconfig.json` — Config TypeScript + alias `@/`
 
 ---
+
+## 🧪 Tests Frontend (Phase 0)
+
+### Vue d'Ensemble
+
+| Type de Test | Nombre | Localisation | Framework | Validation |
+|--------------|---------|--------------|-----------|------------|
+| **Unitaires** | 7 | `__tests__/unit/**/*.test.{ts,tsx}` | Jest + React Testing Library | `npm run test` |
+
+### Fichiers de Tests par Composant/Hook
+
+| Module | Fichier de Test | Description |
+|--------|----------------|-------------|
+| Hooks auth | `__tests__/unit/hooks/auth/useAuth.test.tsx` | Existence du hook useAuth |
+| Hooks auth | `__tests__/unit/hooks/auth/useLogin.test.tsx` | Existence du hook useLogin |
+| Hooks auth | `__tests__/unit/hooks/auth/useRegister.test.tsx` | Existence du hook useRegister |
+| Hooks auth | `__tests__/unit/hooks/auth/useLogout.test.tsx` | Existence du hook useLogout |
+| Composants | `__tests__/unit/components/LoadingSpinner.test.tsx` | Rendu du spinner SVG |
+| Composants | `__tests__/unit/components/ErrorBoundary.test.tsx` | Rendu enfants + fallback erreur |
+| Composants | `__tests__/unit/components/Pagination.test.tsx` | Rendu items + pagination multi-pages |
+
+### Configuration Jest
+
+```javascript
+// jest.config.js
+const nextJest = require('next/jest');
+const createJestConfig = nextJest({ dir: './' });
+module.exports = createJestConfig({
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  testEnvironment: 'jest-environment-jsdom',
+  moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
+  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/'],
+});
+```
+
+### Scénarios Cypress (E2E) à couvrir manuellement
+
+| # | Scénario | Priorité |
+|---|----------|----------|
+| 1 | Page d'accueil charge correctement (header, footer, liens) | Haute |
+| 2 | Navigation vers /login et /register affiche les pages auth | Haute |
+| 3 | Header responsive : menu hamburger s'ouvre sur mobile | Moyenne |
+| 4 | 404 personnalisé s'affiche pour route inexistante | Moyenne |
+| 5 | Error boundary capture une erreur React et affiche le fallback | Basse |
+| 6 | Pagination fonctionne avec données réelles (à implémenter en Phase 2+) | Basse |
+
+### Commandes de Validation
+
+```bash
+# Build production
+npm run build
+
+# Lint
+npm run lint
+
+# Format check
+npm run format:check
+
+# Tests unitaires
+npm run test
+```
+
+---
+
+## 📊 Résumé
 
 *Pour plus de détails sur l'architecture, voir [ARCHITECTURE_OVERVIEW.md](./ARCHITECTURE_OVERVIEW.md)*

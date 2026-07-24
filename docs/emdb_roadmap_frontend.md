@@ -129,48 +129,48 @@ emdb/
 
 ### 0.1 Création du workspace Next.js
 
-- [ ] `npx create-next-app@latest apps/web --ts --tailwind` dans le monorepo
-- [ ] Configurer `tsconfig.json` pour le path alias `@/` → `./`
-- [ ] Configurer `next.config.js` :
+- [x] `npx create-next-app@latest apps/web --ts --tailwind` dans le monorepo
+- [x] Configurer `tsconfig.json` pour le path alias `@/` → `./`
+- [x] Configurer `next.config.js` :
   - `output: 'standalone'` (pour Docker/Vercel)
   - `images: { remotePatterns: [{ hostname: 'image.tmdb.org' }] }` (affiches TMDB)
-- [ ] Configurer `tailwind.config.js` :
+- [x] Configurer `tailwind.config.js` :
   - shadcn/ui setup (`npx shadcn-ui@latest init`)
   - Thème sombre/light avec `class` strategy
   - Couleurs personnalisées (primary, secondary, accent)
-- [ ] Configurer `.eslintrc` + `.prettierrc` (hérité du monorepo)
-- [ ] Scripts npm : `dev`, `build`, `start`, `lint`, `test`, `test:e2e`
+- [x] Configurer `.eslintrc` + `.prettierrc` (hérité du monorepo)
+- [x] Scripts npm : `dev`, `build`, `start`, `lint`, `test`, `test:e2e`
 
 ### 0.2 Client API & React Query
 
-- [ ] `lib/api/apiClient.ts` — wrapper fetch avec :
+- [x] `lib/api/apiClient.ts` — wrapper fetch avec :
   - Base URL depuis `NEXT_PUBLIC_API_URL` (`.env.local`)
   - Intercepteur pour rafraîchir le token JWT (via `/auth/refresh`)
   - Gestion des erreurs (401 → redirect login, 403 → forbidden page, 404 → not found)
   - Timeout configurable (10s)
-- [ ] `lib/api/queryClient.ts` — configuration globale de React Query :
+- [x] `lib/api/queryClient.ts` — configuration globale de React Query :
   - `staleTime: 5 * 60 * 1000` (5 min)
   - `cacheTime: 10 * 60 * 1000` (10 min)
   - `retry: 1` (pas de retry sur 4xx)
   - `refetchOnWindowFocus: true` (rafraîchir à la réactivation)
-- [ ] `lib/api/types.ts` — types TypeScript partagés :
+- [x] `lib/api/types.ts` — types TypeScript partagés :
   - `Title`, `Person`, `Episode`, `Season`, `Credit`, `Genre`, `Country`
   - `User`, `UserRating`, `UserWatch`, `UserList`, `ListShare`
   - `PaginationResult<T>`, `ApiResponse<T>`
 
 ### 0.3 Auth context & store
 
-- [ ] `store/authStore.ts` — Zustand store :
+- [x] `store/authStore.ts` — Zustand store :
   - `user: AuthenticatedUser | null`
   - `accessToken: string | null`
   - `isAuthenticated: boolean`
   - `isLoading: boolean`
   - Actions : `login()`, `register()`, `logout()`, `refreshToken()`, `fetchCurrentUser()`
-- [ ] `hooks/auth/useAuth()` — hook pour accéder au store
-- [ ] `hooks/auth/useLogin()` — mutation React Query pour `/auth/login`
-- [ ] `hooks/auth/useRegister()` — mutation React Query pour `/auth/register`
-- [ ] `hooks/auth/useLogout()` — mutation pour `/auth/logout`
-- [ ] Middleware Next.js `middleware.ts` :
+- [x] `hooks/auth/useAuth()` — hook pour accéder au store
+- [x] `hooks/auth/useLogin()` — mutation React Query pour `/auth/login`
+- [x] `hooks/auth/useRegister()` — mutation React Query pour `/auth/register`
+- [x] `hooks/auth/useLogout()` — mutation pour `/auth/logout`
+- [x] Middleware Next.js `middleware.ts` :
   - Vérifier le token JWT à chaque navigation
   - Rediriger vers `/login` si non authentifié (pour les routes protégées)
   - Rafraîchir le token si expiré
@@ -178,25 +178,25 @@ emdb/
 
 ### 0.4 Layout & composants de base
 
-- [ ] `components/layout/Header.tsx` — navigation responsive :
+- [x] `components/layout/Header.tsx` — navigation responsive :
   - Logo eMDB
   - Liens : Accueil, Recherche, Calendrier, Mes listes, Dataviz, Notifications
   - Bouton connexion/déconnexion
   - Toggle thème sombre/light
   - Menu mobile (hamburger)
 - [ ] `components/layout/Sidebar.tsx` — sidebar desktop (optionnel)
-- [ ] `components/layout/Footer.tsx` — footer minimal
-- [ ] `components/common/LoadingSpinner.tsx` — spinner réutilisable
-- [ ] `components/common/ErrorBoundary.tsx` — boundary pour les erreurs React
-- [ ] `components/common/Pagination.tsx` — pagination avec `PaginationResult<T>`
-- [ ] `app/loading.tsx` — loading global
-- [ ] `app/error.tsx` — error global
-- [ ] `app/not-found.tsx` — page 404
+- [x] `components/layout/Footer.tsx` — footer minimal
+- [x] `components/common/LoadingSpinner.tsx` — spinner réutilisable
+- [x] `components/common/ErrorBoundary.tsx` — boundary pour les erreurs React
+- [x] `components/common/Pagination.tsx` — pagination avec `PaginationResult<T>`
+- [x] `app/loading.tsx` — loading global
+- [x] `app/error.tsx` — error global
+- [x] `app/not-found.tsx` — page 404
 
 ### 0.5 Tests
 
-- [ ] Config Jest + React Testing Library (`jest.config.js`, `jest.setup.ts`)
-- [ ] Config Cypress (`cypress.config.ts`, `cypress/e2e/`, `cypress/fixtures/`)
+- [x] Config Jest + React Testing Library (`jest.config.js`, `jest.setup.ts`)
+- [x] Config Cypress (`cypress.config.ts`, `cypress/e2e/`, `cypress/fixtures/`)
 - [ ] CI GitHub Actions : lint → format:check → test → build
 
 ---
