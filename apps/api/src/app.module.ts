@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+ctuelleimport { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AdminModule } from './admin/admin.module';
@@ -14,6 +14,7 @@ import { WatchesModule } from './watches/watches.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { ListsModule } from './lists/lists.module';
 import { RecommenderModule } from './recommender/recommender.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { RecommenderModule } from './recommender/recommender.module';
     RatingsModule,
     ListsModule,
     RecommenderModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
 })
